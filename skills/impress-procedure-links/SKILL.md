@@ -11,6 +11,11 @@ triplet; never return a parameter without its pipeline and procedure context.
 Resolve records before constructing links. Never guess, hard-code, or reuse
 identifiers from examples.
 
+By default, omit alternative pipelines from results. An alternative pipeline
+is any record whose `pipeline_stable_id` starts with `ALT`. Warn the user that
+this is the default behavior and that they can request alternative pipelines
+explicitly.
+
 ## Workflow
 
 1. Interpret the request as a triplet search. Infer omitted pipeline and
@@ -41,7 +46,10 @@ identifiers from examples.
    parameter_stable_key)` triplet as one result. The pipeline core contains
    repeated rows, so remove only exact duplicate triplets. Keep distinct
    parameters and distinct pipeline/procedure pairs, including different ages,
-   centres, alternative pipelines, and records with the same display name.
+   centres, and records with the same display name. Unless the user explicitly
+   requests alternative pipelines, exclude records whose `pipeline_stable_id`
+   starts with `ALT`. If requested, retain those alternative records alongside
+   the standard pipelines.
 
 4. If the request is ambiguous and the search finds several distinct
    parameter names / stable IDs (for example, “pupil parameters”), show the
@@ -78,5 +86,7 @@ identifiers from examples.
    containing the same columns (and metadata); when requested, create the CSV
    as a file and link it in the response. Use a stable column order and quote
    values according to CSV rules so it can be consumed downstream. If no record
-   matches after the supplementary searches, say that no matching triplet was
-   found; never invent IDs or URLs.
+   matches after the supplementary searches and the default alternative-pipeline
+   filter, say that no matching triplet was found; never invent IDs or URLs.
+   State that alternative pipelines were omitted by default and can be included
+   if the user asks for them.
