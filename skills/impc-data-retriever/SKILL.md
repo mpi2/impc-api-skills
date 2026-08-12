@@ -74,7 +74,19 @@ Common filters:
 - ontology/statistics: `mp_term_id`, `mp_term_name`, `mp_term_id_options`, `top_level_mp_term_name`, `p_value`, `effect_size`, `statistical_method`, `significant`
 - anatomy/images: `anatomy_term`, `top_level_anatomy_term`, `download_url`, `image_link`, `file_type`
 
-4. Build `params` with Solr syntax.
+4. For named data kinds, discover stable-id triplets before downloading rows.
+
+IMPC observation data are defined by the triplet `pipeline_stable_id`, `procedure_stable_id`, `parameter_stable_id`. When the user asks for a data kind by name, such as "locomotor activity", "body weight", "grip strength", "startle response" or similar, first produce a table of matching triplets from the `experiment` core and ask the user to confirm if multiple meanings are present.
+
+Use the bundled helper when a term needs discovery:
+
+```bash
+python skills/impc-data-retriever/scripts/find_stable_id_triplets.py "body weight" --out body_weight_triplets.csv
+```
+
+The helper uses a Solr pivot facet with `rows=0`, searches parameter/procedure names and stable IDs with capitalization variants, then returns distinct triplets plus names. Keep the name columns in the table: the same code fragment can mean different things in different pipelines or procedures, for example `CSD_008` has appeared as both "Coat - color pattern - back" and "Startle response". Also treat capitalization as non-authoritative: both `Body weight` and `Body Weight` can appear.
+
+5. Build `params` with Solr syntax.
 
 - `q`: required query string. Use exact stable IDs where possible.
 - `fl`: comma-separated fields to return. Keep it narrow for performance.
@@ -84,13 +96,13 @@ Common filters:
 - `facet`, `facet.field`, `facet.limit`, `facet.mincount`: counts by centre, method, sex, zygosity, procedure, parameter, etc.
 - `wt`: `json` or `csv` for `batch_solr_request(download=True)`.
 
-5. Use the right function.
+6. Use the right function.
 
 - Use `solr_request(..., validate=True)` for small queries, previews, counts, facets and URL generation.
 - Use `batch_solr_request(...)` for large result sets, list queries and downloads.
 - Use `url_only=True` when the user wants a shareable Solr URL.
 
-6. Return or save the result in the requested format.
+7. Return or save the result in the requested format.
 
 ## Output
 
@@ -209,6 +221,24 @@ df = batch_solr_request(
 )
 ```
 
+Query by confirmed triplets:
+
+```python
+triplet_clauses = [
+    '(pipeline_stable_id:"IMPC_001" AND procedure_stable_id:"IMPC_BWT_001" AND parameter_stable_id:"IMPC_BWT_001_001")',
+    '(pipeline_stable_id:"HMGU_001" AND procedure_stable_id:"HMGU_BWT_001" AND parameter_stable_id:"HMGU_BWT_001_001")',
+]
+
+df = batch_solr_request(
+    core="experiment",
+    params={
+        "q": "(" + " OR ".join(triplet_clauses) + ") AND biological_sample_group:experimental",
+        "fl": "pipeline_stable_id,procedure_stable_id,parameter_stable_id,parameter_name,observation_id,specimen_id,gene_symbol,allele_symbol,sex,zygosity,data_point,life_stage_name",
+    },
+    batch_size=10000,
+)
+```
+
 Multiple genes, alleles, parameters or colonies:
 
 ```python
@@ -319,6 +349,14 @@ Example 5
 
 User
 
+Download body weight data.
+
+First run the triplet discovery helper for `"body weight"` and show the `pipeline_stable_id`, `procedure_stable_id`, `parameter_stable_id`, `procedure_name` and `parameter_name` table. Then query `experiment` by confirmed full triplets, not by `parameter_name` alone.
+
+Example 6
+
+User
+
 Compare late adult and early adult activity data for centres with late adult OFD.
 
 Facet `experiment` by `phenotyping_center` for late adult OFD, build a grouped centre query, retrieve late/middle adult experimental rows, then retrieve early adult rows for the same `allele_accession_id` values. Retrieve controls separately with `biological_sample_group:control`.
@@ -329,6 +367,8 @@ Facet `experiment` by `phenotyping_center` for late adult OFD, build a grouped c
 - Use `fl` aggressively; do not retrieve all fields unless the user asks for all fields.
 - Use facets to discover available centres, procedures, parameters, methods, sex or zygosity before large downloads.
 - Use exact stable IDs over names. Prefer `procedure_stable_id`, `parameter_stable_id`, `mp_term_id`, `allele_accession_id`.
+- For data kinds named in ordinary language, discover and use complete `pipeline_stable_id`/`procedure_stable_id`/`parameter_stable_id` triplets before retrieving observations.
+- Do not query observations by `parameter_stable_id` alone when a code fragment or name may be ambiguous.
 - Preserve original IMPC identifiers.
 - Return informative error messages if no matching data are found.
 - If multiple datasets match the request, explain the options and ask the user to choose.
@@ -351,6 +391,7 @@ If a field or core warning appears with `validate=True`, check the current packa
 
 ## Notes
 - Always use the installed `impc-api` package rather than calling IMPC REST endpoints directly, unless the package does not support the requested functionality.
+- The triplet discovery helper calls Solr directly because `impc-api` does not expose pivot facets.
 - Current validated Solr cores in the package are `experiment`, `genotype-phenotype`, `impc_images`, `phenodigm`, and `statistical-result`.
 - `batch_solr_request` ignores `params["rows"]`; set `batch_size` instead.
 - `batch_solr_request` mutates the `params` dictionary by setting `start`, `rows`, `wt`, and sometimes `fq`; pass a copy if reusing params.
