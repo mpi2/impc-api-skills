@@ -1,5 +1,5 @@
 ---
-name: impress-procedure-links
+name: get-impress-data
 description: Generate IMPReSS links and downloadable triplet tables from natural-language requests by resolving pipeline, procedure, and parameter identifiers in the IMPC Solr pipeline core. Use for requests to find, list, or generate applicable IMPReSS parameter pages, including ambiguous or centre-specific variants.
 ---
 
