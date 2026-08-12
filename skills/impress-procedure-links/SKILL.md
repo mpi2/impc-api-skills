@@ -1,32 +1,82 @@
 ---
 name: impress-procedure-links
-description: Generate IMPReSS procedure links from natural-language requests by resolving procedure and pipeline identifiers in the IMPC Solr pipeline core. Use for requests to find, list, or generate all applicable IMPReSS procedure pages, including ambiguous or centre-specific pipeline variants.
+description: Generate IMPReSS links and downloadable triplet tables from natural-language requests by resolving pipeline, procedure, and parameter identifiers in the IMPC Solr pipeline core. Use for requests to find, list, or generate applicable IMPReSS parameter pages, including ambiguous or centre-specific variants.
 ---
 
-# IMPReSS Procedure Links
+# IMPReSS Procedure and Parameter Links
 
-Resolve procedure records before constructing links. Never guess, hard-code, or reuse identifiers from examples.
+IMPC data are defined by the triplet `pipeline`, `procedure`, and `parameter`.
+For any request about parameters or data, always resolve and return the full
+triplet; never return a parameter without its pipeline and procedure context.
+Resolve records before constructing links. Never guess, hard-code, or reuse
+identifiers from examples.
 
 ## Workflow
 
-1. Interpret the requested procedure and retain meaningful qualifiers such as stage, specimen, assay, or centre.
+1. Interpret the request as a triplet search. Infer omitted pipeline and
+   procedure context from the requested phenotype/parameter and retain
+   meaningful qualifiers such as stage, specimen, assay, or centre. A request
+   such as “eye phenotype, cornea opacity, list of parameters” means search for
+   parameters matching `cornea opacity` and include their pipeline and
+   procedure for every result.
 
-2. Query the `impc-solr` MCP service with `mcp__impc_solr__solr_query` using `core: "pipeline"`. Search `procedure_name` with the request's meaningful terms. Build a wildcard clause for each meaningful token and combine the token clauses with `AND`; do not rely on an exact quoted phrase, since the pipeline field may not match phrase queries consistently. Include an `OR` variant for joined spellings when relevant (for example, `body weight` should search both `(procedure_name:*body* AND procedure_name:*weight*)` and `procedure_name:*bodyweight*`).
+2. Query the `impc-solr` MCP service with `mcp__impc_solr__solr_query` using
+   `core: "pipeline"`. Search the relevant `parameter_name`,
+   `procedure_name`, and pipeline fields with the request's meaningful terms.
+   Build a wildcard clause for each meaningful token and combine token clauses
+   with `AND`; do not rely on an exact quoted phrase. Include an `OR` variant
+   for joined spellings when relevant (for example, `body weight` should
+   search both `(parameter_name:*body* AND parameter_name:*weight*)` and
+   `parameter_name:*bodyweight*`). Run supplementary single-token and exact /
+   case-preserving searches, plus stable-ID searches when the request contains
+   an ID, and union their results before filtering. A zero or incomplete result
+   from one query is not proof that no record exists. Query enough rows to
+   include every match—prefer `rows: 10000`—and request at least:
 
-   Run supplementary queries for each meaningful token and an exact/case-preserving `procedure_name` query when the request resembles a procedure display name; union their results before filtering for the requested concept. A zero or incomplete result from one combined wildcard query is not proof that no record exists: Solr field analysis can make a combined wildcard query miss a record that a token, exact-name, or stable-key query finds. Query enough rows to include every match—prefer `rows: 10000`—and request at least:
-
-   `pipeline_id,pipeline_name,pipeline_stable_id,procedure_name,procedure_stable_id,procedure_stable_key`
+   `pipeline_id,pipeline_name,pipeline_stable_id,procedure_name,procedure_stable_id,procedure_stable_key,parameter_name,parameter_stable_id,parameter_stable_key`
 
    Request additional centre/metadata fields only if they exist in the returned Solr schema.
 
-3. Treat each exact `(pipeline_id, procedure_stable_key)` pair as one result. The pipeline core contains repeated parameter-level rows, so remove only duplicate rows with the same pair. Keep distinct pipeline/procedure pairs, including different ages, centres, alternative pipelines, and records with the same display name. Each distinct pair maps to its own procedure page.
+3. Treat each exact `(pipeline_id, procedure_stable_key,
+   parameter_stable_key)` triplet as one result. The pipeline core contains
+   repeated rows, so remove only exact duplicate triplets. Keep distinct
+   parameters and distinct pipeline/procedure pairs, including different ages,
+   centres, alternative pipelines, and records with the same display name.
 
-4. Prefer records whose `procedure_name` and pipeline metadata best match the request. If a broad request such as “X-ray” matches several applicable pipelines, return all relevant pairs rather than selecting the first. A request phrased as one page may still map to multiple pages; do not collapse records merely because their display names are similar. Ask a clarification question only when the returned metadata cannot distinguish the intended procedure.
+4. If the request is ambiguous and the search finds several distinct
+   parameter names / stable IDs (for example, “pupil parameters”), show the
+   suggested parameter names and stable IDs and ask the user to pick one before
+   producing the final triplet table. Do not silently choose one. Once a
+   parameter is selected, retain all applicable pipeline/procedure variants.
 
-5. For every selected `(pipeline_id, procedure_stable_key)` pair, construct the procedure page using the parameter-page URL:
+5. Prefer records whose parameter, procedure, and pipeline metadata best match
+   the request. If a broad request such as “X-ray” matches several applicable
+   triplets, return all relevant triplets rather than selecting the first. A
+   request phrased as one page may still map to multiple pages; do not collapse
+   records merely because their display names are similar. Ask a clarification
+   question only when the returned metadata cannot distinguish the intended
+   parameter or procedure.
+
+6. For every selected triplet, construct the IMPReSS parameter link:
+
+   `https://www.mousephenotype.org/impress/OntologyInfo?action=list&procID=<procedure_stable_key>#<parameter_stable_key>`
+
+   In this URL, map `procID` only from `procedure_stable_key` and the URL
+   fragment after `#` only from `parameter_stable_key`. URL-encode values if
+   required, and do not emit a URL when either required identifier is missing.
+   The pipeline ID is represented in the table and CSV; it is not substituted
+   into `procID` or the fragment. If a procedure-level link is also useful,
+   construct it separately as:
 
    `https://www.mousephenotype.org/impress/ProcedureInfo?action=list&procID=<procedure_stable_key>&pipeID=<pipeline_id>`
 
-   Map `procID` only from `procedure_stable_key` and `pipeID` only from `pipeline_id`. URL-encode values if required, and do not emit a URL when the required identifier is missing.
-
-6. Return only the applicable parameter-page URLs, labeling each as `procedure page`. For multiple pipeline pairs, return a complete list or table that includes `procedure_name`, `procedure_stable_id`, `pipeline_name`, `pipeline_stable_id`, and any useful centre or age metadata. If no record matches after the supplementary searches, say that no matching procedure was found; never invent IDs or URLs.
+7. Return a table with at least these columns:
+   `pipeline_name`, `pipeline_stable_id`, `procedure_name`,
+   `procedure_stable_id`, `procedure_stable_key`, `parameter_name`,
+   `parameter_stable_id`, `parameter_stable_key`, and `IMPReSS link`. Include
+   useful centre or age metadata when available. Offer a downloadable CSV
+   containing the same columns (and metadata); when requested, create the CSV
+   as a file and link it in the response. Use a stable column order and quote
+   values according to CSV rules so it can be consumed downstream. If no record
+   matches after the supplementary searches, say that no matching triplet was
+   found; never invent IDs or URLs.
