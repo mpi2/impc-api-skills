@@ -48,13 +48,24 @@ Use that client's native inspection method: its MCP command, settings UI, or doc
 
 "Set up the IMPC servers" is often not a clean install. People arrive with two of the four already there, all four under an SSE transport that never worked, or names such as `impc_solr` that other skills cannot call. Adding a fresh set on top produces duplicates. If everything requested is already present and healthy, report that and stop.
 
-If the client supports user/global and project/workspace scopes, preserve an explicitly requested scope. Otherwise, ask only when the choice materially changes who receives the configuration; do not silently turn a project-only request into a global change. When the user asks for instructions for somebody else's client, provide those instructions without modifying the current machine.
+If the client supports user/global and project/workspace scopes, preserve an
+explicitly requested scope. Otherwise, default to project/workspace scope. Ask
+the user to choose between project/workspace and user/global scope only when
+the active project cannot be identified or the request makes the intended
+scope ambiguous. If project/workspace scope is unsupported, explain that only
+user/global scope is available and ask permission before using it; never
+silently fall back to user/global scope. When the user asks for instructions
+for somebody else's client, provide those instructions without modifying the
+current machine.
 
 ### 3. Propose the client-native change, then apply it
 
 Use only the selected client's section in `references/clients.md`. Prefer its supported settings UI or configuration command when available; edit a file when that is the documented mechanism or the user requests it.
 
-Before changing configuration, show the exact command, UI operation or file edit and get confirmation. Read and merge existing file-based configuration so unrelated MCP servers survive. Do not replace a whole configuration file just to add IMPC entries.
+Before changing configuration, state the selected scope, show the exact
+command, UI operation or file edit, and get confirmation. Read and merge
+existing file-based configuration so unrelated MCP servers survive. Do not
+replace a whole configuration file just to add IMPC entries.
 
 Four is the default, not a requirement. When another skill invoked this one as a prerequisite, it will have named the server it needs — install that one, confirm it, and hand control back rather than expanding the job. Adding the other three is a reasonable thing to offer, never a reason to make someone wait longer for the tool they were actually after.
 

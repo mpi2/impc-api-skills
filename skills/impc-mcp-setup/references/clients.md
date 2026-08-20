@@ -19,7 +19,9 @@ Note the path for publications is `publication` (singular) while the conventiona
 
 ## Codex clients (Codex app / ChatGPT desktop app, Codex CLI, and Codex IDE extension)
 
-These clients share MCP configuration on the same Codex host. Use `~/.codex/config.toml` for user scope or `.codex/config.toml` in a trusted project for project scope.
+These clients share MCP configuration on the same Codex host. Use
+`.codex/config.toml` in the active trusted project by default. Use
+`~/.codex/config.toml` only when the user requests user scope.
 
 In the ChatGPT desktop app: Settings → MCP servers → Add server. Enter the exact server name, choose **Streamable HTTP**, paste its URL, save, then select **Restart**.
 
@@ -50,10 +52,10 @@ A URL entry is Streamable HTTP. Inspect with `codex mcp list` or `/mcp` in the T
 Configurable by command. Preferred over hand-editing, because the CLI writes to the correct file for the scope and validates the entry.
 
 ```bash
-claude mcp add --transport http --scope user impc-solr https://www.ebi.ac.uk/mi/impc/mcp/solr/
-claude mcp add --transport http --scope user impc-publications https://www.ebi.ac.uk/mi/impc/mcp/publication/
-claude mcp add --transport http --scope user impc-orthology https://www.ebi.ac.uk/mi/impc/mcp/orthology/
-claude mcp add --transport http --scope user impc-allele https://www.ebi.ac.uk/mi/impc/mcp/allele/
+claude mcp add --transport http --scope project impc-solr https://www.ebi.ac.uk/mi/impc/mcp/solr/
+claude mcp add --transport http --scope project impc-publications https://www.ebi.ac.uk/mi/impc/mcp/publication/
+claude mcp add --transport http --scope project impc-orthology https://www.ebi.ac.uk/mi/impc/mcp/orthology/
+claude mcp add --transport http --scope project impc-allele https://www.ebi.ac.uk/mi/impc/mcp/allele/
 ```
 
 Scopes: `--scope user` (all projects on this machine), `--scope project` (writes `.mcp.json` in the repo, committed and shared with teammates), `--scope local` (this project only, not shared; the default if `--scope` is omitted).
@@ -95,7 +97,8 @@ These remote connectors are account-backed across supported Claude web, desktop 
 
 ## Cursor
 
-Edit `.cursor/mcp.json` for the current project, or `~/.cursor/mcp.json` to make them available in every project:
+Edit `.cursor/mcp.json` for the current project by default. Use
+`~/.cursor/mcp.json` only when the user requests user scope:
 
 ```json
 {
@@ -122,7 +125,9 @@ Restart or reload Cursor, then check Settings → MCP that all requested servers
 
 ## VS Code
 
-Use **MCP: Add Server** from the Command Palette and choose Workspace or Global, or edit `.vscode/mcp.json` in the workspace:
+Use **MCP: Add Server** from the Command Palette and choose Workspace by
+default or Global when the user requests user scope. Alternatively, edit
+`.vscode/mcp.json` in the workspace:
 
 ```json
 {
@@ -143,4 +148,8 @@ Inspect with **MCP: List Servers**. If Agent Host is enabled, prefer the guided 
 
 ## Any other MCP client
 
-The generic shape is: name, URL, Streamable HTTP transport, no auth. If the client offers a transport dropdown, pick Streamable HTTP (sometimes labelled just "HTTP"). If it only offers SSE and stdio, it is too old for these servers — the connection will fail regardless of the URL.
+The generic shape is: name, URL, Streamable HTTP transport, no auth. Prefer
+project/workspace scope when the client supports it; use user/global scope only
+when requested. If the client offers a transport dropdown, pick Streamable
+HTTP (sometimes labelled just "HTTP"). If it only offers SSE and stdio, it is
+too old for these servers — the connection will fail regardless of the URL.
