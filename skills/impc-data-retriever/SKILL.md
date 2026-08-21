@@ -132,15 +132,8 @@ python skills/impc-data-retriever/scripts/find_stable_id_triplets.py "body weigh
 
 The helper uses a Solr pivot facet with `rows=0`, searches parameter/procedure names and stable IDs with capitalization variants, then returns distinct triplets plus names. Keep the name columns in the table: the same code fragment can mean different things in different pipelines or procedures, for example `CSD_008` has appeared as both "Coat - color pattern - back" and "Startle response". Also treat capitalization as non-authoritative: both `Body weight` and `Body Weight` can appear.
 
-5. Build `params` with Solr syntax.
+TODO: Need to clarify whether wildcard procedure queries such as `procedure_stable_id:*OFD*` are intended only for discovery or may also be used for final observation downloads. The current examples use wildcard procedure queries for batch retrieval, which conflicts with the requirement to retrieve named data kinds using confirmed full pipeline/procedure/parameter triplets. Once clarified, label wildcard queries as discovery-only or revise the affected examples and triplet rule.
 
-- `q`: required query string. Use exact stable IDs where possible.
-- `fl`: comma-separated fields to return. Keep it narrow for performance.
-- `rows`: row count for `solr_request`; use `rows: 0` for counts/facets.
-- `start`: offset for manual pagination.
-- `sort`: for example `p_value asc` or `marker_symbol asc`.
-- `facet`, `facet.field`, `facet.limit`, `facet.mincount`: counts by centre, method, sex, zygosity, procedure, parameter, etc.
-- `wt`: `json` or `csv` for `batch_solr_request(download=True)`.
 
 6. Use the right function.
 
