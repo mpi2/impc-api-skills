@@ -120,7 +120,7 @@ Common filters:
 - ontology/statistics: `mp_term_id`, `mp_term_name`, `mp_term_id_options`, `top_level_mp_term_name`, `p_value`, `effect_size`, `statistical_method`, `significant`
 - anatomy/images: `anatomy_term`, `top_level_anatomy_term`, `download_url`, `image_link`, `file_type`
 
-4. For named data kinds, discover stable-id triplets before downloading rows.
+5. For named data kinds, discover stable-id triplets before downloading rows.
 
 IMPC observation data are defined by the triplet `pipeline_stable_id`, `procedure_stable_id`, `parameter_stable_id`. When the user asks for a data kind by name, such as "locomotor activity", "body weight", "grip strength", "startle response" or similar, first produce a table of matching triplets from the `experiment` core and ask the user to confirm if multiple meanings are present.
 
@@ -213,7 +213,7 @@ User
 
 Export Clinical Chemistry parameters as CSV.
 
-If the user needs observed data, use `experiment` with the Clinical Chemistry procedure or parameter stable IDs and `batch_solr_request(download=True, wt="csv")`. If they need parameter metadata only, facet `experiment` by `parameter_stable_id` or query a small field list of `procedure_name,procedure_stable_id,parameter_name,parameter_stable_id,pipeline_stable_id`.
+If the user needs observed data, use `experiment` with the Clinical Chemistry procedure or parameter stable IDs and call `batch_solr_request` with `download=True` and `params["wt"] = "csv"`. If they need parameter metadata only, facet `experiment` by `parameter_stable_id` or query a small field list of `procedure_name,procedure_stable_id,parameter_name,parameter_stable_id,pipeline_stable_id`.
 
 Example 5
 
@@ -231,7 +231,7 @@ Compare late adult and early adult activity data for centres with late adult OFD
 
 Facet `experiment` by `phenotyping_center` for late adult OFD, build a grouped centre query, retrieve late/middle adult experimental rows, then retrieve early adult rows for the same `allele_accession_id` values. Retrieve controls separately with `biological_sample_group:control`.
 
-## Guidelines
+## General Guidelines
 - Prefer `solr_request` and `batch_solr_request` rather than manually constructing Solr URLs.
 - Use `validate=True` for normal queries against validated cores.
 - Use `fl` aggressively; do not retrieve all fields unless the user asks for all fields.
@@ -242,7 +242,7 @@ Facet `experiment` by `phenotyping_center` for late adult OFD, build a grouped c
 - Preserve original IMPC identifiers.
 - Return informative error messages if no matching data are found.
 - If multiple datasets match the request, explain the options and ask the user to choose.
-- For very large downloads, use `batch_solr_request(download=True, wt="csv" or "json")`; warn that reading the downloaded file into memory may still fail.
+- For very large downloads, use `batch_solr_request` with `download=True` and `params["wt"]` set to `"csv"` or `"json"`; warn that reading the downloaded file into memory may still fail.
 - For metadata columns that contain lists like `"key = value"`, expand them after retrieval only if the user asks for analysis-ready columns.
 - Do not infer biological annotations beyond what IMPC returns.
 
