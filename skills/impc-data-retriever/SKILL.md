@@ -141,21 +141,9 @@ TODO: Need to clarify whether wildcard procedure queries such as `procedure_stab
 - Use `batch_solr_request(...)` for large result sets, list queries and downloads.
 - Use `url_only=True` when the user wants a shareable Solr URL.
 
-7. Return or save the result in the requested format.
+7. Run a preview or count and apply the bounded stopping rule.
 
-## Output
-
-Prefer returning a pandas DataFrame.
-
-If requested, save results as CSV or JSON with `batch_solr_request(download=True)`.
-
-`batch_solr_request(download=True)` supports only `wt="json"` and `wt="csv"`. For Parquet or Excel, first retrieve a DataFrame or CSV, then convert with pandas only if the data size is reasonable.
-
-## Fields
-
-Use these field sets as defaults, then add or remove fields to match the request.
-
-Raw observations (`experiment`):
+Before a batch request or download, run a small validated preview or a `rows: 0` count:
 
 ```python
 count_params = params.copy()
