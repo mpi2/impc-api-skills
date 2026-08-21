@@ -16,6 +16,16 @@ is any record whose `pipeline_stable_id` starts with `ALT`. Warn the user that
 this is the default behavior and that they can request alternative pipelines
 explicitly.
 
+## Prerequisites
+
+Before answering, verify that `mcp__impc_solr__solr_query` from the
+`impc-solr` MCP server is available. If it is unavailable, stop: do not
+substitute web search, inference, cached examples, or guessed identifiers.
+Tell the user: "The `impc-solr` MCP server is not available in this session.
+Do you want me to install or configure it using the `impc-mcp-setup` skill?"
+If the user agrees, invoke `impc-mcp-setup` for `impc-solr` and follow its
+confirmation and reload workflow. Resume this request only after the session
+exposes the tool.
 ## Workflow
 
 1. Interpret the request as a triplet search. Infer omitted pipeline and
