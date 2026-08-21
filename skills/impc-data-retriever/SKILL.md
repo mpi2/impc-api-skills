@@ -54,7 +54,29 @@ Examples:
 from impc_api import solr_request, batch_solr_request
 ```
 
-2. Choose the Solr core.
+
+2. Understand the function contracts.
+
+Both functions take:
+
+- `core` (`str`): the Solr core to query.
+- `params` (`dict`): Solr query parameters. For normal queries, include `q`; use `"*:*"` for all records or `"field:value"` for a specific match. `fl` is optional, but should normally be set to a narrow comma-separated field list for performance.
+
+For `solr_request`:
+
+- Set `params["rows"]` to control the number of returned documents; use `rows: 0` for counts or facets.
+- Other useful `params` entries include `start`, `sort`, `facet`, `facet.field`, `facet.limit`, and `facet.mincount`.
+- Pass function options such as `validate=True`, `silent=True`, `url_only=True`, or `timeout=<seconds>` separately from `params`.
+- A normal request returns `(num_found, dataframe)`. With `url_only=True`, it returns `(url, None)`.
+
+For `batch_solr_request`:
+
+- Set the function argument `batch_size` to control page size. Do not use `params["rows"]`; the function overrides it while batching.
+- For a file download, pass `download=True` and `filename=<name>` to the function. Set `params["wt"]` to `"csv"` or `"json"`; `wt` is not a function argument.
+- For list queries, put `field_list` and `field_type` in `params`.
+- The function returns a DataFrame and, with `download=True`, also writes the requested file.
+
+3. Choose the Solr core.
 
 | User wants | Use core | Notes |
 | --- | --- | --- |
