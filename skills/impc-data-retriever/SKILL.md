@@ -86,7 +86,31 @@ For `batch_solr_request`:
 | Images or media links | `impc_images` | Return `download_url`, `jpeg_url`, `thumbnail_url`, `omero_id` where useful. |
 | Disease models and Phenodigm matches | `phenodigm` | Include `type:...` in `q`, for example `type:disease_model_summary`. |
 
-3. Identify filters.
+Once a core is selected follow appropriate references to identify FIELDS, CORE-SPECIFIC RULES and QUERY PATTERNS:
+
+Follow rules according to the requested solr core
+- [genotype-phenotype](./references/genotype-phenotype-guide.md)
+- [experiment](./references/experiment-guide.md)
+- [impc_images](./references/impc_images-guide.md)
+- [phenodigm](./references/phenodigm-guide.md)
+- [statistical-result](./references/statistical-result-guide.md)
+<!-- Placeholder routes for future supported cores. Follow the active route pattern above when enabling them.
+- [gene](./references/gene-guide.md)
+- [mp](./references/mp-guide.md)
+- [pipeline](./references/pipeline-guide.md)
+- [product](./references/product-guide.md)
+
+TODO (MP ontology expansion): Ask the responsible developer whether the unvalidated `mp` core should be supported for descendant expansion. The working-group repository used `core="mp"` for this purpose, followed by a `statistical-result` query using `mp_term_id_options`. If this route is approved, keep the core-selection condition and `validate=False` caveat in this entrypoint, and put the fields and query examples in `references/mp-guide.md`.
+-->
+
+General guides for FIELDS AND QUERY PATTERNS
+## Fields
+Use these core-specific field sets provided under each reference guide as defaults, then add or remove fields to match the request.
+
+## Query patterns
+Use exact stable identifiers when available. Quote values containing spaces. Combine clauses with `AND` and grouped `OR`.
+
+4. Identify filters.
 
 Common filters:
 
@@ -141,198 +165,41 @@ Use these field sets as defaults, then add or remove fields to match the request
 Raw observations (`experiment`):
 
 ```python
-fl = "experiment_id,specimen_id,observation_id,biological_sample_group,pipeline_stable_id,procedure_stable_id,procedure_name,phenotyping_center,production_center,external_sample_id,strain_name,sex,zygosity,date_of_birth,date_of_experiment,age_in_weeks,life_stage_name,gene_symbol,allele_symbol,allele_accession_id,colony_id,parameter_stable_id,parameter_name,data_point,observation_type,metadata_group,metadata,weight,weight_date,weight_days_old,weight_parameter_stable_id"
-```
+count_params = params.copy()
+count_params["rows"] = 0
 
-Genotype-phenotype summaries (`genotype-phenotype`):
-
-```python
-fl = "marker_symbol,marker_accession_id,allele_symbol,allele_accession_id,colony_id,mp_term_id,mp_term_name,top_level_mp_term_name,procedure_name,procedure_stable_id,parameter_name,parameter_stable_id,p_value,effect_size,percentage_change,statistical_method,sex,zygosity,life_stage_name,phenotyping_center,pipeline_stable_id"
-```
-
-Statistical results (`statistical-result`):
-
-```python
-fl = "marker_symbol,allele_symbol,allele_accession_id,colony_id,procedure_name,procedure_stable_id,parameter_name,parameter_stable_id,statistical_method,significant,p_value,effect_size,mp_term_id,mp_term_name,mp_term_id_options,top_level_mp_term_name,sex,zygosity,phenotype_sex,life_stage_name,phenotyping_center,pipeline_stable_id,male_ko_effect_p_value,female_ko_effect_p_value,genotype_effect_p_value,weight_effect_p_value,weight_effect_parameter_estimate,male_mutant_count,female_mutant_count,male_control_count,female_control_count"
-```
-
-Images (`impc_images`):
-
-```python
-fl = "gene_symbol,allele_symbol,allele_accession_id,colony_id,procedure_name,procedure_stable_id,parameter_name,parameter_stable_id,sex,zygosity,life_stage_name,phenotyping_center,download_url,jpeg_url,thumbnail_url,omero_id,file_type"
-```
-
-Disease models (`phenodigm`):
-
-```python
-fl = "type,disease_id,disease_source,disease_term,gene_symbol,hgnc_gene_symbol,marker_symbol,mouse_model,model_id,model_source,model_description,impc_model,mp_id,mp_term,hp_id,hp_term,disease_model_avg_norm,disease_model_max_norm,association_curated,association_ortholog"
-```
-
-## Query patterns
-
-Use exact stable identifiers when available. Quote values containing spaces. Combine clauses with `AND` and grouped `OR`.
-
-Gene to phenotypes:
-
-```python
-num_found, df = solr_request(
-    core="genotype-phenotype",
-    params={
-        "q": "marker_symbol:Brca2",
-        "rows": 100,
-        "fl": "marker_symbol,allele_symbol,mp_term_name,top_level_mp_term_name,p_value,zygosity,sex",
-        "sort": "p_value asc",
-    },
-    validate=True,
-)
-```
-
-Phenotype or MP term to genes:
-
-```python
-num_found, df = solr_request(
-    core="genotype-phenotype",
-    params={
-        "q": 'mp_term_name:"abnormal bone mineral density"',
-        "rows": 50,
-        "fl": "marker_symbol,allele_symbol,mp_term_id,mp_term_name,p_value,zygosity",
-        "sort": "p_value asc",
-    },
-    validate=True,
-)
-```
-
-Significant statistical results:
-
-```python
-num_found, df = solr_request(
-    core="statistical-result",
-    params={
-        "q": "marker_symbol:Dclk1 AND significant:true",
-        "rows": 100,
-        "fl": "marker_symbol,parameter_name,procedure_name,top_level_mp_term_name,effect_size,p_value,zygosity,statistical_method",
-        "sort": "p_value asc",
-    },
-    validate=True,
-)
-```
-
-Raw observations by procedure, parameter, centre, colony or sample group:
-
-```python
-df = batch_solr_request(
-    core="experiment",
-    params={
-        "q": 'procedure_stable_id:*OFD* AND life_stage_name:"Late adult" AND biological_sample_group:experimental',
-        "fl": "observation_id,specimen_id,gene_symbol,allele_symbol,colony_id,sex,zygosity,phenotyping_center,parameter_stable_id,parameter_name,data_point,metadata,weight,life_stage_name",
-    },
-    batch_size=10000,
-)
-```
-
-Controls for the same assay:
-
-```python
-df = batch_solr_request(
-    core="experiment",
-    params={
-        "q": 'procedure_stable_id:*OFD* AND biological_sample_group:control',
-        "fl": "observation_id,specimen_id,sex,zygosity,phenotyping_center,parameter_stable_id,parameter_name,data_point,metadata,weight,life_stage_name",
-    },
-    batch_size=10000,
-)
-```
-
-Query by confirmed triplets:
-
-```python
-triplet_clauses = [
-    '(pipeline_stable_id:"IMPC_001" AND procedure_stable_id:"IMPC_BWT_001" AND parameter_stable_id:"IMPC_BWT_001_001")',
-    '(pipeline_stable_id:"HMGU_001" AND procedure_stable_id:"HMGU_BWT_001" AND parameter_stable_id:"HMGU_BWT_001_001")',
-]
-
-df = batch_solr_request(
-    core="experiment",
-    params={
-        "q": "(" + " OR ".join(triplet_clauses) + ") AND biological_sample_group:experimental",
-        "fl": "pipeline_stable_id,procedure_stable_id,parameter_stable_id,parameter_name,observation_id,specimen_id,gene_symbol,allele_symbol,sex,zygosity,data_point,life_stage_name",
-    },
-    batch_size=10000,
-)
-```
-
-Multiple genes, alleles, parameters or colonies:
-
-```python
-df = batch_solr_request(
-    core="genotype-phenotype",
-    params={
-        "q": "*:*",
-        "fl": "marker_symbol,mp_term_name,p_value,zygosity",
-        "field_list": ["Brca2", "Trp53", "Pten"],
-        "field_type": "marker_symbol",
-    },
-)
-```
-
-Facets for discovery:
-
-```python
-num_found, df = solr_request(
-    core="experiment",
-    params={
-        "q": 'procedure_stable_id:*OFD* AND life_stage_name:"Late adult"',
-        "rows": 0,
-        "facet": "on",
-        "facet.field": "phenotyping_center",
-        "facet.limit": 50,
-        "facet.mincount": 1,
-    },
+num_found, _ = solr_request(
+    core,
+    count_params,
     silent=True,
-)
-```
-
-Images:
-
-```python
-num_found, df = solr_request(
-    core="impc_images",
-    params={
-        "q": "gene_symbol:Akt2",
-        "rows": 20,
-        "fl": "gene_symbol,parameter_name,procedure_name,download_url,jpeg_url,thumbnail_url",
-    },
     validate=True,
 )
 ```
 
-Disease models:
+- If the request fails because of a timeout or another transient transport error, retry it at most once. If it still fails, stop and report the request failure; do not describe it as a zero-result query.
+- If `num_found` is greater than zero, continue with the requested retrieval.
+- If `num_found` is zero, inspect validation warnings and the query locally before making another request.
+- Make at most one additional `rows: 0` request. Use that single request either to rerun a query after correcting an evident core, field or syntax error, or to diagnose a valid query:
+  - for a name or free-text query, broaden only the name-matching clause;
+  - for a query with several filters, keep the primary identifier and remove the secondary filters.
+- Skip the diagnostic query when the original request already uses one exact stable identifier against the correct core and field.
+- If the additional query also returns zero, stop and report that no matching IMPC data were found.
+- If a corrected query returns records for the original request, continue with the requested retrieval. If a broadened diagnostic query finds nearby records, stop before downloading them, show the nearby entities or the filters that excluded the original result, and ask the user which option to use.
 
-```python
-num_found, df = solr_request(
-    core="phenodigm",
-    params={
-        "q": 'type:disease_model_summary AND disease_term:"Usher syndrome"',
-        "rows": 50,
-        "fl": "disease_id,disease_term,gene_symbol,marker_symbol,mouse_model,mp_term,disease_model_avg_norm,disease_model_max_norm",
-    },
-    validate=True,
-)
-```
+Do not continue broadening filters, searching additional cores or retrying zero-result queries automatically. A zero-result investigation is limited to the initial request and one diagnostic request.
 
-MP ontology-linked statistical results:
+8. Return or save the result in the requested format.
 
-```python
-df = batch_solr_request(
-    core="statistical-result",
-    params={
-        "q": 'mp_term_id_options:"MP:0004738" OR mp_term_id_options:"MP:0011967"',
-        "fl": "marker_symbol,allele_symbol,colony_id,mp_term_id_options,parameter_stable_id,significant,p_value,pipeline_stable_id",
-    },
-)
-```
+## Output
 
-The working-group repository sometimes used `core="mp"` to expand MP descendants. This core is not in the current package validation list. Use it only when the user explicitly needs ontology expansion; call `solr_request(core="mp", ..., validate=False)` or use another ontology source, then query `statistical-result` with `mp_term_id_options`.
+Prefer returning a pandas DataFrame.
+
+TODO: Ask the responsible developer what returning a pandas DataFrame should mean in the skill's execution environment: display a preview, retain an in-memory object, save a file artifact, or provide reusable Python code. Once clarified, define the default behavior for small and large results.
+
+If requested, save results as CSV or JSON with `batch_solr_request`, passing `download=True` and `filename=<name>` to the function and setting `params["wt"]` to the requested format.
+
+`batch_solr_request(download=True)` supports only `params["wt"] = "json"` and `params["wt"] = "csv"`. For Parquet or Excel, first retrieve a DataFrame or CSV, then convert with pandas only if the data size is reasonable.
+
 
 ## Examples
 Example 1
