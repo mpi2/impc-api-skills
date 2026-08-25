@@ -46,7 +46,7 @@ After selection, read only the matching section of `references/clients.md`. Do n
 
 Use that client's native inspection method: its MCP command, settings UI, or documented configuration file. The matching section of `references/clients.md` gives the supported method and scope choices.
 
-"Set up the IMPC servers" is often not a clean install. People arrive with two of the four already there, all four under an SSE transport that never worked, or names such as `impc_solr` that other skills cannot call. Adding a fresh set on top produces duplicates. If everything requested is already present and healthy, report that and stop.
+"Set up the IMPC servers" is often not a clean install. People arrive with two of the four already there, all four under an SSE transport that never worked, or entries using different server names. Inspect the existing server and tool list before changing anything, and avoid creating duplicates. If everything requested is already present and healthy, report that and stop.
 
 If the client supports user/global and project/workspace scopes, preserve an
 explicitly requested scope. Otherwise, default to project/workspace scope. Ask
