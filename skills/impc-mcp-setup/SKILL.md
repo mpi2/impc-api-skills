@@ -24,7 +24,7 @@ All four use **Streamable HTTP** transport. Not SSE, not stdio. A client configu
 
 Keep the trailing slash on every URL, and use these exact hyphenated names — they are the ones the official IMPC documentation uses, so they are what collaborators following the public setup page will have.
 
-The name is not cosmetic. Clients derive tool names from it, so `impc-solr` becomes `mcp__impc-solr__solr_query` while `impc_solr` becomes `mcp__impc_solr__solr_query`. Anything written against one form silently fails to find the other, and the failure looks like a missing server rather than a naming mismatch. If you inherit a config using different names, prefer renaming it to these over teaching every caller the variant.
+Use these names as the server names in client configuration. After setup and reload, use the selected client's native server/tool list to identify the callable tools. Tool naming may differ between clients.
 
 `references/servers.md` has the full tool inventory per server if the user wants to know what they are getting, or if you need to map a task ("find the human ortholog of Pax6") onto the right server.
 
