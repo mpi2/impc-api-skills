@@ -6,7 +6,7 @@ Four hosted servers, all public, all Streamable HTTP, all versioned together by 
 
 ## impc-solr
 
-`https://www.ebi.ac.uk/mi/impc/mcp/solr/` — server id `impc-solr-mcp`
+`https://www.ebi.ac.uk/mi/impc/mcp/solr/`
 
 | Tool | Purpose |
 | --- | --- |
@@ -20,7 +20,7 @@ Route here: phenotype data for a gene, significant calls, raw measurements, proc
 
 ## impc-publications
 
-`https://www.ebi.ac.uk/mi/impc/mcp/publication/` — server id `impc_mcp_server`
+`https://www.ebi.ac.uk/mi/impc/mcp/publication/`
 
 | Tool | Purpose |
 | --- | --- |
@@ -36,7 +36,7 @@ Route here: literature on an IMPC gene or allele, recent IMPC-linked papers, pub
 
 ## impc-orthology
 
-`https://www.ebi.ac.uk/mi/impc/mcp/orthology/` — server id `impc-orthology-mcp`
+`https://www.ebi.ac.uk/mi/impc/mcp/orthology/`
 
 | Tool | Purpose |
 | --- | --- |
@@ -55,7 +55,7 @@ Route here: translating between mouse and human genes, cross-species comparison,
 
 ## impc-allele
 
-`https://www.ebi.ac.uk/mi/impc/mcp/allele/` — server id `impc-allele-mcp`
+`https://www.ebi.ac.uk/mi/impc/mcp/allele/`
 
 | Tool | Purpose |
 | --- | --- |
