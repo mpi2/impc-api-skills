@@ -4,6 +4,9 @@ description: "You MUST use this when the user requests data retrieval from the I
 ---
 
 # IMPC Data Retrieval
+## Prerequisites
+1. `uv`: Read the `uv` skill and follow its setup instructions to ensure proper configuration. 
+
 ## Purpose
 
 Retrieve data from the International Mouse Phenotyping Consortium (IMPC) using the `impc-api` Python package.
