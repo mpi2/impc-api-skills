@@ -6,7 +6,7 @@ description: "You MUST use this when the user requests data retrieval from the I
 # IMPC Data Retrieval
 
 ## Prerequisites
-1. `uv`: Read the `uv` skill and follow its setup instructions to ensure proper configuration.  
+1. `uv`: Read the `uv` skill and follow its setup instructions to ensure proper configuration.
 2. All Python commands for this skill must run
 through the local uv project:
 
@@ -111,7 +111,7 @@ For `batch_solr_request`:
 | Phenotype associations by gene, MP term, procedure, parameter or p-value | `genotype-phenotype` | Best concise gene-to-phenotype summary. |
 | Statistical model output, significant calls, sex-specific effects, counts and p-values | `statistical-result` | Best for `significant:true`, `mp_term_id_options`, effect sizes, model methods and procedure-level statistics. |
 | Images or media links | `impc_images` | Return `download_url`, `jpeg_url`, `thumbnail_url`, `omero_id` where useful. |
-| Disease models and Phenodigm matches | `phenodigm` | Include `type:...` in `q`, for example `type:disease_model_summary`. |
+| Disease models and PhenoDigm matches | `phenodigm` | Include `type:...` in `q`. Every result-returning `type:disease_model_summary` query must return the server-derived `phenodigm_score`; follow the core guide for the exact expression and interpretation workflow. |
 
 Once a core is selected follow appropriate references to identify FIELDS, CORE-SPECIFIC RULES and QUERY PATTERNS:
 
@@ -135,6 +135,11 @@ When the biological question requires evidence from more than one core, read
 each selected core guide. A multi-core query is a coordinated set of
 independent Solr requests; neither `solr_request` nor `batch_solr_request`
 accepts multiple cores in one call.
+
+Multiple typed requests within `phenodigm`, such as retrieving a disease-model
+summary and then its complete disease and mouse-model phenotype profiles, are
+a same-core workflow. Follow the PhenoDigm guide; use the multi-core guide only
+when the question also requires another Solr core.
 
 General guides for FIELDS AND QUERY PATTERNS
 ## Fields
@@ -205,6 +210,13 @@ num_found, _ = solr_request(
 - Skip the diagnostic query when the original request already uses one exact stable identifier against the correct core and field.
 - If the additional query also returns zero, stop and report that no matching IMPC data were found.
 - If a corrected query returns records for the original request, continue with the requested retrieval. If a broadened diagnostic query finds nearby records, stop before downloading them, show the nearby entities or the filters that excluded the original result, and ask the user which option to use.
+
+For PhenoDigm score interpretation, an unresolved `type:disease` or
+`type:mouse_model` lookup by an identifier returned in a
+`type:disease_model_summary` record is a special case. Treat it as a lookup
+problem rather than evidence that the referenced phenotype profile is absent;
+report the exact identifier and failed query, ask the user to review them, and
+follow the PhenoDigm interpretation guide.
 
 Do not continue broadening filters, searching additional cores or retrying zero-result queries automatically. A zero-result investigation is limited to the initial request and one diagnostic request.
 
@@ -309,6 +321,10 @@ Facet `experiment` by `phenotyping_center` for late adult OFD, build a grouped c
 - For data kinds named in ordinary language, discover and use complete `pipeline_stable_id`/`procedure_stable_id`/`parameter_stable_id` triplets before retrieving observations.
 - Do not query observations by `parameter_stable_id` alone when a code fragment or name may be ambiguous.
 - Preserve original IMPC identifiers.
+- For every result-returning `type:disease_model_summary` request, include
+  `phenodigm_score:div(sum(disease_model_avg_norm,disease_model_max_norm),2)`
+  in `fl`. Do not return the two normalized component fields unless the user
+  explicitly requests them.
 - Return informative error messages if no matching data are found.
 - If multiple datasets match the request, explain the options and ask the user to choose.
 - For very large downloads, use `batch_solr_request` with `download=True` and `params["wt"]` set to `"csv"` or `"json"`; warn that reading the downloaded file into memory may still fail.
@@ -328,7 +344,14 @@ If no data exist:
 - explain that no matching IMPC data were found;
 - suggest nearby entities if appropriate.
 
-If a field or core warning appears with `validate=True`, check the current package field schema and correct spelling. If the query intentionally uses a legacy/unvalidated core such as `mp`, rerun without validation and explain the limitation.
+For `type:disease_model_summary`, the current validator may emit
+`InvalidFieldWarning` because it splits the valid derived score pseudo-field on
+its internal commas. Treat warnings caused by the exact required
+`phenodigm_score:div(sum(disease_model_avg_norm,disease_model_max_norm),2)`
+alias as expected and retain the alias. For every other field or core warning
+with `validate=True`, check the current package field schema and correct the
+query. If the query intentionally uses a legacy/unvalidated core such as `mp`,
+rerun without validation and explain the limitation.
 
 ## Notes
 - Always use the installed `impc-api` package rather than calling IMPC REST endpoints directly, unless the package does not support the requested functionality.
