@@ -4,6 +4,7 @@ description: "You MUST use this when the user requests data retrieval from the I
 ---
 
 # IMPC Data Retrieval
+
 ## Prerequisites
 1. `uv`: Read the `uv` skill and follow its setup instructions to ensure proper configuration.  
 2. All Python commands for this skill must run
@@ -227,6 +228,18 @@ the biological question, following the multi-core query guide.
 
 `batch_solr_request(download=True)` supports only `params["wt"] = "json"` and `params["wt"] = "csv"`. For Parquet or Excel, first retrieve a DataFrame or CSV, then convert with pandas only if the data size is reasonable.
 
+### Retrieval report
+
+For every execution that makes an IMPC request, write `README.md` in the result
+directory, including successful, partial, zero-result, and failed executions.
+If the user did not specify a result directory, create a descriptive directory
+for the run so an existing repository-level `README.md` is not overwritten.
+
+Before executing queries, read and follow
+[the retrieval report guide](./references/output-report.md). Keep the attempt
+and transformation log as the run proceeds; do not reconstruct only the
+successful path afterward. The result summary in the README should be the same
+concise synthesis returned to the user.
 
 ## Examples
 Example 1
