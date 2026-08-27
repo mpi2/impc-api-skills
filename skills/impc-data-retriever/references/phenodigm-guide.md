@@ -1,10 +1,25 @@
 In the `phenodigm` core:
 
 1. Fields:
-Disease models (`phenodigm`):
+
+Disease-model scores (`type:disease_model_summary`):
 
 ```python
-fl = "disease_id,disease_source,disease_term,gene_symbol,hgnc_gene_symbol,marker_symbol,mouse_model,model_id,model_source,model_description,impc_model,mp_id,mp_term,hp_id,hp_term,association_curated,association_ortholog,phenodigm_score:div(sum(disease_model_avg_norm,disease_model_max_norm),2)"
+fl = "disease_id,disease_term,marker_id,marker_symbol,model_id,model_source,model_description,model_genetic_background,association_curated,disease_matched_phenotypes,model_matched_phenotypes,phenodigm_score:div(sum(disease_model_avg_norm,disease_model_max_norm),2)"
+```
+
+Known disease-gene associations with the human-mouse mapping
+(`type:disease_gene_summary`):
+
+```python
+fl = "disease_id,disease_term,marker_id,marker_symbol,hgnc_gene_id,hgnc_gene_symbol"
+```
+
+Gene identifier resolution and direct ortholog mapping:
+
+```python
+gene_fl = "gene_id,gene_symbol,hgnc_gene_id,hgnc_gene_symbol"
+gene_gene_fl = "gene_id,hgnc_gene_id"
 ```
 
 
@@ -12,7 +27,8 @@ fl = "disease_id,disease_source,disease_term,gene_symbol,hgnc_gene_symbol,marker
 When querying the phenodigm core:
 a. ALWAYS include a type filter in "q". Never query phenodigm without a type.
            Valid types and when to use them:
-               - type:disease_model_summary  → gene-disease associations
+               - type:disease_model_summary  → mouse model-disease matches and scores
+               - type:disease_gene_summary   → known disease-human gene associations plus the mouse ortholog
                - type:disease                → disease records
                - type:gene                  → gene records
                - type:gene_gene             → human-mouse gene mapping
@@ -22,7 +38,43 @@ a. ALWAYS include a type filter in "q". Never query phenodigm without a type.
 
            Example: {"q": "type:disease_model_summary AND marker_symbol:Pparg"}
 
-b. PhenoDigm score: Every result-returning `type:disease_model_summary` query
+b. GENE SPECIES AND LOOKUP ROUTING:
+
+   `type:disease_model_summary` is mouse-keyed. Query it with `marker_id` or
+   `marker_symbol`, not `hgnc_gene_id` or `hgnc_gene_symbol`.
+
+   Respect a species named by the user. When species is not stated,
+   conventional capitalization can guide routing (`Pparg` for mouse and
+   `PPARG` for human), but it is not a substitute for a stable identifier. If
+   unsure whether the user means a human or mouse gene, ask the user to clarify
+   the species before making any gene query. Do not guess from capitalization
+   alone or silently rewrite a human symbol as a mouse symbol.
+
+   Choose the human-to-mouse route by the biological question:
+
+   - For a direct ortholog lookup, or before a predicted/all disease-model
+     search, use the association-independent mapping. Resolve a human symbol
+     with `type:gene AND hgnc_gene_symbol:PPARG` to obtain `hgnc_gene_id`, then
+     query `type:gene_gene` by that exact HGNC identifier. The returned
+     `gene_id` is the MGI identifier to use as `marker_id` in
+     `type:disease_model_summary`. If the user already supplied an HGNC
+     identifier, skip the `type:gene` lookup.
+   - For known/curated disease-gene associations, prefer
+     `type:disease_gene_summary`. It returns the disease, HGNC gene, and mouse
+     marker in the same document. Add the user's exact `disease_id` (preferred)
+     or disease term when supplied. If the user only needs the known
+     gene-disease mapping, this result may answer the request without a
+     disease-model query. If models or scores are requested, query
+     `type:disease_model_summary` with the exact returned `marker_id` and
+     `disease_id`.
+
+   Do not use `type:disease_gene_summary` as a general ortholog resolver: it is
+   limited to genes represented in known disease associations, can return one
+   row per disease, and a zero result does not establish that no ortholog
+   exists. Likewise, do not let this shortcut exclude predicted associations
+   when the user requests predicted or all results.
+
+c. PhenoDigm score: Every result-returning `type:disease_model_summary` query
     MUST ask Solr to calculate and return the combined PhenoDigm score. Include
     this exact field alias in `fl`:
 
@@ -40,7 +92,7 @@ b. PhenoDigm score: Every result-returning `type:disease_model_summary` query
     caused by the exact alias above are expected and do not justify removing
     the derived score. Investigate all other validation warnings normally.
 
-c. ASSOCIATION STATUS: Every result-returning `type:disease_model_summary`
+d. ASSOCIATION STATUS: Every result-returning `type:disease_model_summary`
    query MUST include `association_curated` in `fl`. This boolean describes the
    disease–human ortholog gene association; it does not describe whether the
    mouse model or PhenoDigm score was manually curated:
@@ -66,7 +118,7 @@ c. ASSOCIATION STATUS: Every result-returning `type:disease_model_summary`
    predicted associations for disease–gene discovery, or all for an inclusive
    search.
 
-d. INTERPRETATION: When asked to interpret a score, use a same-core,
+e. INTERPRETATION: When asked to interpret a score, use a same-core,
    multi-request workflow within `phenodigm`:
 
    1. Retrieve the selected `type:disease_model_summary` record with
@@ -87,6 +139,56 @@ d. INTERPRETATION: When asked to interpret a score, use a same-core,
 
 3. Query patterns:
 
+Human symbol to mouse ortholog, independent of disease association:
+
+```python
+_, human_gene_df = solr_request(
+    core="phenodigm",
+    params={
+        "q": "type:gene AND hgnc_gene_symbol:PPARG",
+        "rows": 10,
+        "fl": "hgnc_gene_id,hgnc_gene_symbol",
+    },
+    validate=True,
+)
+
+hgnc_gene_id = human_gene_df.iloc[0]["hgnc_gene_id"]
+_, ortholog_df = solr_request(
+    core="phenodigm",
+    params={
+        "q": f'type:gene_gene AND hgnc_gene_id:"{hgnc_gene_id}"',
+        "rows": 10,
+        "fl": "gene_id,hgnc_gene_id",
+    },
+    validate=True,
+)
+```
+
+Known disease-gene association and mapping when the disease is supplied:
+
+```python
+_, disease_gene_df = solr_request(
+    core="phenodigm",
+    params={
+        "q": 'type:disease_gene_summary AND hgnc_gene_symbol:PPARG AND disease_id:"OMIM:125853"',
+        "rows": 10,
+        "fl": "disease_id,disease_term,marker_id,marker_symbol,hgnc_gene_id,hgnc_gene_symbol",
+    },
+    validate=True,
+)
+
+selected = disease_gene_df.iloc[0]
+_, model_df = solr_request(
+    core="phenodigm",
+    params={
+        "q": f'type:disease_model_summary AND marker_id:"{selected["marker_id"]}" AND disease_id:"{selected["disease_id"]}"',
+        "rows": 50,
+        "fl": "disease_id,disease_term,marker_id,marker_symbol,model_id,model_description,association_curated,phenodigm_score:div(sum(disease_model_avg_norm,disease_model_max_norm),2)",
+    },
+    validate=True,
+)
+```
+
 Disease models:
 
 ```python
@@ -95,7 +197,7 @@ num_found, df = solr_request(
     params={
         "q": 'type:disease_model_summary AND disease_term:"Usher syndrome"',
         "rows": 50,
-        "fl": "disease_id,disease_term,gene_symbol,marker_symbol,mouse_model,mp_term,association_curated,phenodigm_score:div(sum(disease_model_avg_norm,disease_model_max_norm),2)",
+        "fl": "disease_id,disease_term,marker_id,marker_symbol,model_id,model_description,association_curated,phenodigm_score:div(sum(disease_model_avg_norm,disease_model_max_norm),2)",
     },
     validate=True,
 )

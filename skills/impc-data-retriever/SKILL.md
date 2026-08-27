@@ -161,7 +161,8 @@ Common filters:
 ### Gene and allele identifier rules
 
 - If the user provides an MGI gene identifier, such as `MGI:1915864`, query the gene accession field appropriate to the core: `marker_accession_id` or `gene_accession_id`. For `phenodigm`, use `marker_id`. For alleles, use `allele_accession_id`.
-- If the user provides a gene symbol, use `marker_symbol` or `gene_symbol` according to the core. Normalize all-uppercase input to mouse-symbol capitalization: the first letter is uppercase and the remaining letters are lowercase (for example, `PRKCD` becomes `Prkcd`).
+- If the user provides a gene symbol, use `marker_symbol` or `gene_symbol` according to the core. Decide the species before changing capitalization: user-stated species or a stable identifier is authoritative, while conventional symbol capitalization is only a routing cue (`Pparg` is mouse; `PPARG` is human). If unsure whether the user means a human or mouse gene, ask the user to clarify the species before querying; do not guess from capitalization alone. Do not silently convert an all-uppercase human symbol to mouse capitalization.
+- `type:disease_model_summary` documents in `phenodigm` are keyed by mouse `marker_id` and `marker_symbol`; they do not carry the human gene identifier needed to start a human-gene query. For a human symbol or HGNC identifier, follow the human-to-mouse routing in the PhenoDigm guide before querying disease-model summaries.
 
 5. For named data kinds, discover stable-id triplets before downloading rows.
 
