@@ -5,7 +5,31 @@ description: "You MUST use this when the user requests data retrieval from the I
 
 # IMPC Data Retrieval
 ## Prerequisites
-1. `uv`: Read the `uv` skill and follow its setup instructions to ensure proper configuration. 
+1. `uv`: Read the `uv` skill and follow its setup instructions to ensure proper configuration.  
+2. All Python commands for this skill must run
+through the local uv project:
+
+```bash
+uv run python - <<'PY'
+# retrieval code
+PY
+```
+
+Do not assume that `pyproject.toml`, `uv.lock`, or `.venv` ship with the skill.
+Before the first query, verify that `uv run python -c "import impc_api"`
+succeeds. If it does not, initialize the current working directory only when it
+does not already contain `pyproject.toml`, then add the dependency:
+
+```bash
+uv init --bare       # only when pyproject.toml is absent
+uv add 'impc-api>=1.0.7'
+```
+
+These commands create or update the user's local `pyproject.toml`, `uv.lock`,
+and `.venv`. Subsequent `uv run` commands reuse that environment and uv's
+normal cache. Do not use `--no-cache` or reinstall the dependency for every
+query. Keep retrieval, post-processing, and README generation in one `uv run`
+invocation where practical.
 
 ## Purpose
 
