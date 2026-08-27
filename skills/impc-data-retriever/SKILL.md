@@ -81,7 +81,6 @@ Examples:
 from impc_api import solr_request, batch_solr_request
 ```
 
-
 2. Understand the function contracts.
 
 Both functions take:
@@ -154,7 +153,8 @@ IMPC observation data are defined by the triplet `pipeline_stable_id`, `procedur
 Use the bundled helper when a term needs discovery:
 
 ```bash
-python skills/impc-data-retriever/scripts/find_stable_id_triplets.py "body weight" --out body_weight_triplets.csv
+uv run skills/impc-data-retriever/scripts/find_stable_id_triplets.py \
+  "body weight" --out body_weight_triplets.csv
 ```
 
 The helper uses a Solr pivot facet with `rows=0`, searches parameter/procedure names and stable IDs with capitalization variants, then returns distinct triplets plus names. Keep the name columns in the table: the same code fragment can mean different things in different pipelines or procedures, for example `CSD_008` has appeared as both "Coat - color pattern - back" and "Startle response". Also treat capitalization as non-authoritative: both `Body weight` and `Body Weight` can appear.
