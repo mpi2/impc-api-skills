@@ -147,11 +147,16 @@ Use exact stable identifiers when available. Quote values containing spaces. Com
 
 Common filters:
 
-- identifiers: `marker_symbol`, `gene_symbol`, `marker_accession_id`, `allele_accession_id`, `allele_symbol`, `colony_id`, `specimen_id`, `observation_id`
+- identifiers: `marker_symbol`, `gene_symbol`, `marker_accession_id`, `gene_accession_id`, `allele_accession_id`, `allele_symbol`, `colony_id`, `specimen_id`, `observation_id`
 - assay metadata: `pipeline_stable_id`, `procedure_stable_id`, `procedure_name`, `parameter_stable_id`, `parameter_name`
 - study design: `phenotyping_center`, `production_center`, `life_stage_name`, `sex`, `zygosity`, `biological_sample_group`
 - ontology/statistics: `mp_term_id`, `mp_term_name`, `mp_term_id_options`, `top_level_mp_term_name`, `p_value`, `effect_size`, `statistical_method`, `significant`
 - anatomy/images: `anatomy_term`, `top_level_anatomy_term`, `download_url`, `image_link`, `file_type`
+
+### Gene and allele identifier rules
+
+- If the user provides an MGI gene identifier, such as `MGI:1915864`, query the gene accession field appropriate to the core: `marker_accession_id` or `gene_accession_id`. For `phenodigm`, use `marker_id`. For alleles, use `allele_accession_id`.
+- If the user provides a gene symbol, use `marker_symbol` or `gene_symbol` according to the core. Normalize all-uppercase input to mouse-symbol capitalization: the first letter is uppercase and the remaining letters are lowercase (for example, `PRKCD` becomes `Prkcd`).
 
 5. For named data kinds, discover stable-id triplets before downloading rows.
 

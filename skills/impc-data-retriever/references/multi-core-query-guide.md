@@ -70,6 +70,18 @@ map them explicitly:
 | Specimen/observation | `specimen_id`, `observation_id` | not applicable | not applicable |
 | Disease/model | not applicable | not applicable | `disease_id`, `model_id` |
 
+When the user provides an MGI gene identifier, such as `MGI:1915864`, use the
+gene accession field supported by each selected core: `gene_accession_id` for
+`experiment` and `impc_images`, `marker_accession_id` for
+`genotype-phenotype` and `statistical-result`, and `marker_id` for
+`phenodigm`. When the user provides an MGI allele identifier, use
+`allele_accession_id` in cores where allele data are available.
+
+When the user provides a gene symbol, use the symbol field shown in the table
+and normalize all-uppercase input to mouse-symbol capitalization before
+querying: the first letter is uppercase and the remaining letters are
+lowercase, for example `PRKCD` becomes `Prkcd`.
+
 Verify that values use the same namespace before treating mapped fields as the
 same identifier. Preserve the original field names and values in each result.
 A normalized presentation column such as `source_core` or `query_gene_id` may
