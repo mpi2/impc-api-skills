@@ -129,6 +129,12 @@ Follow rules according to the requested solr core
 TODO (MP ontology expansion): Ask the responsible developer whether the unvalidated `mp` core should be supported for descendant expansion. The working-group repository used `core="mp"` for this purpose, followed by a `statistical-result` query using `mp_term_id_options`. If this route is approved, keep the core-selection condition and `validate=False` caveat in this entrypoint, and put the fields and query examples in `references/mp-guide.md`.
 -->
 
+When the biological question requires evidence from more than one core, read
+[the multi-core query guide](./references/multi-core-query-guide.md) as well as
+each selected core guide. A multi-core query is a coordinated set of
+independent Solr requests; neither `solr_request` nor `batch_solr_request`
+accepts multiple cores in one call.
+
 General guides for FIELDS AND QUERY PATTERNS
 ## Fields
 Use these core-specific field sets provided under each reference guide as defaults, then add or remove fields to match the request.
@@ -196,6 +202,13 @@ num_found, _ = solr_request(
 
 Do not continue broadening filters, searching additional cores or retrying zero-result queries automatically. A zero-result investigation is limited to the initial request and one diagnostic request.
 
+For a planned multi-core query, apply this stopping rule independently to each
+core. A failure or zero result in one core does not establish that the entity is
+absent from another core. Continue independent branches that can still answer
+part of the question, stop branches that depend on a missing upstream
+identifier, and report every core's status without claiming the answer is
+complete.
+
 8. Return or save the result in the requested format.
 
 ## Output
@@ -205,6 +218,12 @@ Prefer returning a pandas DataFrame.
 TODO: Ask the responsible developer what returning a pandas DataFrame should mean in the skill's execution environment: display a preview, retain an in-memory object, save a file artifact, or provide reusable Python code. Once clarified, define the default behavior for small and large results.
 
 If requested, save results as CSV or JSON with `batch_solr_request`, passing `download=True` and `filename=<name>` to the function and setting `params["wt"]` to the requested format.
+
+For multi-core results, keep heterogeneous core outputs separate by default and
+return a short synthesis plus a per-core result/provenance table. Do not append
+or join core DataFrames merely because fields have similar names. Combine them
+only through verified stable identifiers and at a cardinality appropriate to
+the biological question, following the multi-core query guide.
 
 `batch_solr_request(download=True)` supports only `params["wt"] = "json"` and `params["wt"] = "csv"`. For Parquet or Excel, first retrieve a DataFrame or CSV, then convert with pandas only if the data size is reasonable.
 
@@ -224,7 +243,12 @@ User
 
 Get all data for Trp53.
 
-Ask whether they want summaries or raw observations. If they say all, retrieve `genotype-phenotype`, `statistical-result`, `experiment`, and `impc_images` separately with gene fields appropriate to each core (`marker_symbol` for summaries/statistics, `gene_symbol` for observations/images).
+Ask whether they want summaries or raw observations. If they say all, use the
+multi-core guide to retrieve `genotype-phenotype`, `statistical-result`,
+`experiment`, and `impc_images` separately with gene fields appropriate to each
+core (`marker_symbol` for summaries/statistics, `gene_symbol` for
+observations/images). Include `phenodigm` only when disease relevance is in
+scope.
 
 Example 3
 
@@ -272,6 +296,8 @@ Facet `experiment` by `phenotyping_center` for late adult OFD, build a grouped c
 - For very large downloads, use `batch_solr_request` with `download=True` and `params["wt"]` set to `"csv"` or `"json"`; warn that reading the downloaded file into memory may still fail.
 - For metadata columns that contain lists like `"key = value"`, expand them after retrieval only if the user asks for analysis-ready columns.
 - Do not infer biological annotations beyond what IMPC returns.
+- Select cores from the biological subquestions before querying. Do not add a
+  core merely because another core returned zero results.
 
 ## Error handling
 If the request is ambiguous:
