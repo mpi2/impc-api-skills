@@ -221,9 +221,15 @@ complete.
 
 Prefer returning a pandas DataFrame.
 
-TODO: Ask the responsible developer what returning a pandas DataFrame should mean in the skill's execution environment: display a preview, retain an in-memory object, save a file artifact, or provide reusable Python code. Once clarified, define the default behavior for small and large results.
+When writing result data, create exactly one file format for each homogeneous
+result set. Use the format requested by the user. If the user asks for a
+download or tabular result without specifying a format, default to CSV. Do not
+also serialize the same rows to JSON, or to any other second format, unless the
+user explicitly asks for both formats.
 
-If requested, save results as CSV or JSON with `batch_solr_request`, passing `download=True` and `filename=<name>` to the function and setting `params["wt"]` to the requested format.
+Save CSV or JSON results with `batch_solr_request`, passing `download=True` and
+`filename=<name>` to the function and setting `params["wt"]` to the selected
+format.
 
 For multi-core results, keep heterogeneous core outputs separate by default and
 return a short synthesis plus a per-core result/provenance table. Do not append
