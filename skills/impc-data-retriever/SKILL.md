@@ -345,12 +345,7 @@ If no data exist:
 - explain that no matching IMPC data were found;
 - suggest nearby entities if appropriate.
 
-For `type:disease_model_summary`, the current validator may emit
-`InvalidFieldWarning` because it splits the valid derived score pseudo-field on
-its internal commas. Treat warnings caused by the exact required
-`phenodigm_score:div(sum(disease_model_avg_norm,disease_model_max_norm),2)`
-alias as expected and retain the alias. For every other field or core warning
-with `validate=True`, check the current package field schema and correct the
+When using `validate=True`, check the current package field schema and correct the
 query. If the query intentionally uses a legacy/unvalidated core such as `mp`,
 rerun without validation and explain the limitation.
 
