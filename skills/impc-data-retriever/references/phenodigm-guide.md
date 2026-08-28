@@ -8,14 +8,18 @@ Disease-model scores (`type:disease_model_summary`):
 fl = "disease_id,disease_term,marker_id,marker_symbol,model_id,model_source,model_description,model_genetic_background,association_curated,disease_matched_phenotypes,model_matched_phenotypes,phenodigm_score:div(sum(disease_model_avg_norm,disease_model_max_norm),2)"
 ```
 
-Known disease-gene associations with the human-mouse mapping
-(`type:disease_gene_summary`):
+Gene identifier resolution with the human-mouse mapping
+(`type:disease_gene_summary`; routing only):
 
 ```python
-fl = "disease_id,disease_term,marker_id,marker_symbol,hgnc_gene_id,hgnc_gene_symbol"
+fl = "marker_id,marker_symbol,hgnc_gene_id,hgnc_gene_symbol"
 ```
 
-Gene identifier resolution and direct ortholog mapping:
+Although these documents also contain disease fields, do not request, return,
+or interpret those fields as disease results. Retrieve disease information from
+`type:disease_model_summary`.
+
+Fallback gene identifier resolution and direct ortholog mapping:
 
 ```python
 gene_fl = "gene_id,gene_symbol,hgnc_gene_id,hgnc_gene_symbol"
@@ -28,7 +32,7 @@ When querying the phenodigm core:
 a. ALWAYS include a type filter in "q". Never query phenodigm without a type.
            Valid types and when to use them:
                - type:disease_model_summary  → mouse model-disease matches and scores
-               - type:disease_gene_summary   → known disease-human gene associations plus the mouse ortholog
+               - type:disease_gene_summary   → routing-only human-mouse gene identifier resolution
                - type:disease                → disease records
                - type:gene                  → gene records
                - type:gene_gene             → human-mouse gene mapping
@@ -50,29 +54,43 @@ b. GENE SPECIES AND LOOKUP ROUTING:
    the species before making any gene query. Do not guess from capitalization
    alone or silently rewrite a human symbol as a mouse symbol.
 
-   Choose the human-to-mouse route by the biological question:
+   IDENTIFIER-RESOLUTION ONLY: Always start an ortholog lookup with
+   `type:disease_gene_summary`. Query it with the user's human or mouse gene
+   identifier (`hgnc_gene_symbol`, `hgnc_gene_id`, `marker_symbol`, or
+   `marker_id`, as appropriate) and use only its human and mouse gene identifier
+   fields. Do not use, return, or interpret its `disease_id`, `disease_term`, or
+   association fields as disease results, even though those fields may be
+   present in the documents.
 
-   - For a direct ortholog lookup, or before a predicted/all disease-model
-     search, use the association-independent mapping. Resolve a human symbol
-     with `type:gene AND hgnc_gene_symbol:PPARG` to obtain `hgnc_gene_id`, then
-     query `type:gene_gene` by that exact HGNC identifier. The returned
-     `gene_id` is the MGI identifier to use as `marker_id` in
-     `type:disease_model_summary`. If the user already supplied an HGNC
-     identifier, skip the `type:gene` lookup.
-   - For known/curated disease-gene associations, prefer
-     `type:disease_gene_summary`. It returns the disease, HGNC gene, and mouse
-     marker in the same document. Add the user's exact `disease_id` (preferred)
-     or disease term when supplied. If the user only needs the known
-     gene-disease mapping, this result may answer the request without a
-     disease-model query. If models or scores are requested, query
-     `type:disease_model_summary` with the exact returned `marker_id` and
-     `disease_id`.
+   For a pure ortholog request, the resolved gene identifiers answer the
+   question. For any request about diseases, disease models, association
+   status, or scores, always query `type:disease_model_summary` after resolving
+   the distinct mouse `marker_id` values. All disease-facing output must come
+   from `type:disease_model_summary`, with the requested
+   associated/predicted/all scope applied there.
 
-   Do not use `type:disease_gene_summary` as a general ortholog resolver: it is
-   limited to genes represented in known disease associations, can return one
-   row per disease, and a zero result does not establish that no ortholog
-   exists. Likewise, do not let this shortcut exclude predicted associations
-   when the user requests predicted or all results.
+   Solr can return repeated `type:disease_gene_summary` documents for the same
+   ortholog mapping. Before using the result, select the identifier fields and
+   deduplicate by the stable human-mouse pair (`hgnc_gene_id`, `marker_id`). If
+   one distinct pair remains, keep that one row and make only one downstream
+   `type:disease_model_summary` query. Repeated rows are not multiple orthologs.
+   If multiple distinct `marker_id` values remain after deduplication, do not
+   discard them as duplicates; treat them as distinct mappings and query or
+   report each one as appropriate.
+
+   Only when `type:disease_gene_summary` returns zero records, use the fallback
+   route: query `type:gene` to resolve the gene and its stable identifiers,
+   then query `type:gene_gene` to obtain the ortholog mapping. Use each returned
+   mouse `gene_id` as `marker_id` in a `type:disease_model_summary` query.
+
+   Interpret fallback outcomes precisely:
+
+   - If `type:gene` or `type:gene_gene` returns no record, do not claim that an
+     ortholog exists.
+   - If both return records but `type:disease_model_summary` returns no data,
+     the gene exists and has a mouse ortholog, but PhenoDigm has no associated
+     or predicted disease records for that ortholog. Do not report this as
+     "no ortholog found."
 
 c. PhenoDigm score: Every result-returning `type:disease_model_summary` query
     MUST ask Solr to calculate and return the combined PhenoDigm score. Include
@@ -139,7 +157,32 @@ e. INTERPRETATION: When asked to interpret a score, use a same-core,
 
 3. Query patterns:
 
-Human symbol to mouse ortholog, independent of disease association:
+Preferred human symbol to mouse gene identifier resolution (routing only):
+
+```python
+num_found, routing_df = solr_request(
+    core="phenodigm",
+    params={
+        "q": "type:disease_gene_summary AND hgnc_gene_symbol:PPARG",
+        "rows": 50,
+        "fl": "marker_id,marker_symbol,hgnc_gene_id,hgnc_gene_symbol",
+    },
+    validate=True,
+)
+
+orthologs = routing_df[
+    ["marker_id", "marker_symbol", "hgnc_gene_id", "hgnc_gene_symbol"]
+].drop_duplicates(subset=["hgnc_gene_id", "marker_id"])
+```
+
+When `num_found` is greater than zero, use only the returned gene identifiers;
+do not also query `type:gene` or `type:gene_gene` merely to rediscover the
+ortholog. If disease information is requested, use the distinct returned
+`marker_id` values in a separate `type:disease_model_summary` query. The usual
+single-ortholog case therefore produces one downstream query even when Solr
+returned many repeated routing documents.
+
+Fallback after a zero-result `type:disease_gene_summary` query:
 
 ```python
 _, human_gene_df = solr_request(
@@ -162,26 +205,52 @@ _, ortholog_df = solr_request(
     },
     validate=True,
 )
-```
 
-Known disease-gene association and mapping when the disease is supplied:
-
-```python
-_, disease_gene_df = solr_request(
+ortholog_df = ortholog_df[["gene_id", "hgnc_gene_id"]].drop_duplicates(
+    subset=["hgnc_gene_id", "gene_id"]
+)
+# This example assumes one distinct mapping remains. If several remain, query
+# every distinct gene_id rather than silently selecting only the first.
+marker_id = ortholog_df.iloc[0]["gene_id"]
+num_found, model_df = solr_request(
     core="phenodigm",
     params={
-        "q": 'type:disease_gene_summary AND hgnc_gene_symbol:PPARG AND disease_id:"OMIM:125853"',
+        "q": f'type:disease_model_summary AND marker_id:"{marker_id}"',
+        "rows": 50,
+        "fl": "disease_id,disease_term,marker_id,marker_symbol,model_id,model_description,association_curated,phenodigm_score:div(sum(disease_model_avg_norm,disease_model_max_norm),2)",
+    },
+    validate=True,
+)
+```
+
+If the `type:gene` and `type:gene_gene` lookups succeed but `num_found` is zero
+for `type:disease_model_summary`, report that the gene and its mouse ortholog
+exist but no associated or predicted diseases are present in PhenoDigm.
+
+Disease-model lookup after identifier resolution when a disease is supplied:
+
+```python
+_, routing_df = solr_request(
+    core="phenodigm",
+    params={
+        "q": "type:disease_gene_summary AND hgnc_gene_symbol:PPARG",
         "rows": 10,
-        "fl": "disease_id,disease_term,marker_id,marker_symbol,hgnc_gene_id,hgnc_gene_symbol",
+        "fl": "marker_id,marker_symbol,hgnc_gene_id,hgnc_gene_symbol",
     },
     validate=True,
 )
 
-selected = disease_gene_df.iloc[0]
+orthologs = routing_df[
+    ["marker_id", "marker_symbol", "hgnc_gene_id", "hgnc_gene_symbol"]
+].drop_duplicates(subset=["hgnc_gene_id", "marker_id"])
+# This example assumes one distinct mapping remains. If several remain, query
+# every distinct marker_id rather than silently selecting only the first.
+marker_id = orthologs.iloc[0]["marker_id"]
+disease_id = "OMIM:125853"
 _, model_df = solr_request(
     core="phenodigm",
     params={
-        "q": f'type:disease_model_summary AND marker_id:"{selected["marker_id"]}" AND disease_id:"{selected["disease_id"]}"',
+        "q": f'type:disease_model_summary AND marker_id:"{marker_id}" AND disease_id:"{disease_id}"',
         "rows": 50,
         "fl": "disease_id,disease_term,marker_id,marker_symbol,model_id,model_description,association_curated,phenodigm_score:div(sum(disease_model_avg_norm,disease_model_max_norm),2)",
     },
