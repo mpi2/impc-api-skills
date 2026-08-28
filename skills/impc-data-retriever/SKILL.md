@@ -95,6 +95,8 @@ For `solr_request`:
 - Other useful `params` entries include `start`, `sort`, `facet`, `facet.field`, `facet.limit`, and `facet.mincount`.
 - Pass function options such as `validate=True`, `silent=True`, `url_only=True`, or `timeout=<seconds>` separately from `params`.
 - A normal request returns `(num_found, dataframe)`. With `url_only=True`, it returns `(url, None)`.
+- For a small bounded result, do not make an identical `rows: 0` request solely
+  to obtain a count; the result request already returns `num_found`.
 
 For `batch_solr_request`:
 
@@ -180,9 +182,10 @@ TODO: Need to clarify whether wildcard procedure queries such as `procedure_stab
 - Use `batch_solr_request(...)` for large result sets, list queries and downloads.
 - Use `url_only=True` when the user wants a shareable Solr URL.
 
-7. Run a preview or count and apply the bounded stopping rule.
+7. Preview large requests and apply the bounded stopping rule.
 
-Before a batch request or download, run a small validated preview or a `rows: 0` count:
+Before a batch request or large download, run a small validated preview or a
+`rows: 0` count:
 
 ```python
 count_params = params.copy()
