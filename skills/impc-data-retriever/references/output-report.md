@@ -6,9 +6,9 @@ debugging record. Write it even when the run is partial, returns no rows, or
 fails after making a request.
 
 If a valid request returns zero results, do not create an empty result data
-file such as CSV, JSON, Parquet, or Excel. Still write the `README.md` and, when
-used, `queries.json` so the zero-result request remains inspectable. These are
-report and provenance files, not result data files.
+file such as CSV, JSON, Parquet, or Excel. Still write the `README.md` so the
+zero-result request remains inspectable. The README is a report and provenance
+file, not a result data file.
 
 ## Capture during execution
 
@@ -36,14 +36,19 @@ For a batched request, record the original parameters before
 Do not repeat every internal `start`/`rows` page as a separate query. Never
 replace failed requests with only the final successful request.
 
-Treat `queries.json` as a machine-readable companion, not as a substitute for
-the README's debugging record. The README must contain the request's exact
-Python construction and function call even when `queries.json` is present.
-When a generated query contains a very large identifier list, keep the README
-scannable by placing the exact code in a collapsed `<details>` block. Before
-that block, state the construction rule, identifier count, source artifact,
-and a relative link to `queries.json`. Do not replace the code with an
-abbreviated query, ellipsis, or pseudocode.
+Do not create `queries.json` for short or directly expressed queries. Record
+those queries only in the README. Create `queries.json` only when the user
+explicitly requests machine-readable query provenance or when dynamically
+generated query inputs, such as a very large identifier list, would otherwise
+make the README unwieldy.
+
+When `queries.json` is created, treat it as a machine-readable companion, not
+as a substitute for the README's debugging record. The README must contain the
+request's exact Python construction and function call. Keep a large generated
+query scannable by placing the exact code in a collapsed `<details>` block.
+Before that block, state the construction rule, identifier count, source
+artifact, and a relative link to `queries.json`. Do not replace the code with
+an abbreviated query, ellipsis, or pseudocode.
 
 ## README structure
 
