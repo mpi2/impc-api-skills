@@ -64,6 +64,7 @@ map them explicitly:
 | Entity | `experiment` / `impc_images` | `genotype-phenotype` / `statistical-result` | `phenodigm` |
 | --- | --- | --- | --- |
 | Mouse gene | `gene_accession_id` (`gene_symbol`) | `marker_accession_id` (`marker_symbol`) | `marker_id` (`marker_symbol`) |
+| Human gene | resolve to a mouse MGI identifier before querying | resolve to a mouse MGI identifier before querying | resolve `hgnc_gene_symbol`/`hgnc_gene_id` through the typed gene-mapping workflow |
 | Allele | `allele_accession_id` | `allele_accession_id` | not available as the same field |
 | Assay | `pipeline_stable_id`, `procedure_stable_id`, `parameter_stable_id` | the same stable-ID fields | not applicable |
 | MP term | not a general result field | `mp_term_id` or `mp_term_id_options` | `mp_id` |
@@ -77,10 +78,15 @@ gene accession field supported by each selected core: `gene_accession_id` for
 `phenodigm`. When the user provides an MGI allele identifier, use
 `allele_accession_id` in cores where allele data are available.
 
-When the user provides a gene symbol, use the symbol field shown in the table
-and normalize all-uppercase input to mouse-symbol capitalization before
-querying: the first letter is uppercase and the remaining letters are
-lowercase, for example `PRKCD` becomes `Prkcd`.
+When the user provides a gene symbol, decide whether it is human or mouse
+before changing capitalization. User-stated species or a stable identifier is
+authoritative; conventional capitalization (`Pparg` for mouse and `PPARG` for
+human) is only a routing cue. If unsure whether the user means a human or mouse
+gene, ask the user to clarify the species before querying. Use the mouse symbol
+fields shown in the table for a mouse gene. For a human symbol or HGNC
+identifier, follow the typed human-to-mouse workflow in the PhenoDigm guide,
+then propagate the verified MGI identifier to the selected mouse-data cores.
+Do not silently normalize a human symbol into a mouse symbol.
 
 Verify that values use the same namespace before treating mapped fields as the
 same identifier. Preserve the original field names and values in each result.
