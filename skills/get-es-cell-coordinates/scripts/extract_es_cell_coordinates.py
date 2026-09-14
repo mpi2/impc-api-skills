@@ -1,4 +1,8 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.10"
+# dependencies = []
+# ///
 """Extract 5′/3′ homology-arm boundaries from an IMPC GenBank file."""
 
 from __future__ import annotations

@@ -8,6 +8,12 @@ description: Retrieve an IMPC ES-cell GenBank file and extract its 5′ and 3′
 Return the interval `x2..y1`, where the GenBank feature annotated `5 arm`
 is `x1..x2` and the feature annotated `3 arm` is `y1..y2`.
 
+## Prerequisites
+
+- `uv` must be installed and available on `PATH`; verify with `uv --version`.
+- Resolving an allele to a GenBank URL requires the `impc-allele` MCP server.
+  A local file or direct GenBank URL does not require MCP.
+
 ## Retrieve the GenBank file
 
 If the user supplies a local GenBank file or a direct GenBank URL, use it.
@@ -29,7 +35,7 @@ targeting-vector GenBank file.
 Run the bundled standard-library parser:
 
 ```bash
-python3 scripts/extract_es_cell_coordinates.py <GenBank-path-or-URL>
+uv run --script scripts/extract_es_cell_coordinates.py <GenBank-path-or-URL>
 ```
 
 The parser accepts plain or gzipped local files and HTTP(S) URLs. It matches
