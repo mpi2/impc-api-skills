@@ -69,6 +69,95 @@ the homology-arm sequences to the requested assembly. `get_htgt_design` can
 provide design oligos and their assembly, but those oligos alone must not be
 relabeled as the GenBank arm boundaries.
 
+## Output report
+
+For every execution that makes an IMPC request or parses a GenBank source,
+write `README.md` alongside the result. If the user did not specify an output
+directory, create a descriptive directory for the run; never overwrite a
+repository-level `README.md`. Write it for successful, partial, zero-result,
+and failed executions.
+
+Keep an ordered attempt log from the first MCP lookup or source retrieval and
+update it as each step runs. Record each request and local transformation,
+including:
+
+- the purpose and order of the step;
+- the exact MCP tool and arguments, or the GenBank path/URL and parser command;
+- the targeting-vector or ES-cell source selected and the clones sharing it;
+- the outcome: `worked`, `zero results`, `failed`, or `not run`;
+- returned products, extracted arm coordinates, predicted interval, row/file
+  counts, or a concise error message; and
+- any deduplication, fallback from vector GenBank to ES-cell GenBank, or
+  skipped branch and why it was taken.
+
+Use this structure, omitting only fields that genuinely do not apply:
+
+```markdown
+# <short request title>
+
+## Request
+
+<The user's request and interpreted scope.>
+
+## Result summary
+
+<Selected source, arm coordinates, predicted interval, and whether the result
+is complete, partial, empty, or failed.>
+
+## Output files
+
+| File | Description |
+| --- | --- |
+| `README.md` | Query and coordinate provenance |
+
+## Queries
+
+### 1. <what was done> — `<status>`
+
+- <Plain-language reason for the request or parsing step.>
+- Core or source: `<MCP source, GenBank path, or URL>`
+- Function or command: `<exact tool or command>`
+- Options: `<relevant options>`
+- Query or source: `<exact values>`
+- Outcome: `<result or concise error>`
+
+```python
+<exact request or command used>
+```
+
+## Process log
+
+| Step | Action | Outcome | Details |
+| ---: | --- | --- | --- |
+| 1 | ... | Worked | ... |
+
+## Limitations and follow-up
+
+<Missing links, failed or zero-result branches, or None.>
+
+## Provenance
+
+- Generated: `<UTC ISO-8601 timestamp>`
+- uv: `<version>`
+- Python: `<version>`
+```
+
+For each numbered query or source subsection, keep execution order and use
+only the statuses `worked`, `zero results`, `failed`, or `not run`. Include the
+exact attempted tool call or parser command, including values that affect
+reproducibility. For a failed request, show the code that was attempted; for
+`not run`, label it `Planned code (not executed)`. Record short, directly
+expressed queries in `README.md`; do not create a separate `queries.json`.
+
+The result summary in the README must match the concise synthesis returned to
+the user. Do not write an empty result data file for a valid zero-result
+request; the README is the provenance record, not a result data file.
+
+Write the report even when no products are found or a request fails after it
+has been made. Do not claim a GenBank source was used when it was only
+considered; record skipped fallbacks as `not run` when they were part of the
+planned workflow.
+
 Official context:
 
 - https://www.mousephenotype.org/help/data-visualization/genome-browser/
