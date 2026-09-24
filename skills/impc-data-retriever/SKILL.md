@@ -182,6 +182,23 @@ The helper uses a Solr pivot facet with `rows=0`, searches parameter/procedure n
 TODO: Need to clarify whether wildcard procedure queries such as `procedure_stable_id:*OFD*` are intended only for discovery or may also be used for final observation downloads. The current examples use wildcard procedure queries for batch retrieval, which conflicts with the requirement to retrieve named data kinds using confirmed full pipeline/procedure/parameter triplets. Once clarified, label wildcard queries as discovery-only or revise the affected examples and triplet rule.
 
 
+### IMPReSS triplet-table handoff
+
+When a request includes output from `get-impress-data`, treat that output as
+resolved parameter metadata, not as observation rows. Its table contains, at a
+minimum, these columns:
+
+`pipeline_name`, `pipeline_stable_id`, `procedure_name`,
+`procedure_stable_id`, `procedure_stable_key`, `parameter_name`,
+`parameter_stable_id`, `parameter_stable_key`, and `IMPReSS link`.
+
+It may also contain centre or age metadata. Preserve every distinct resolved
+triplet, including variants with different pipeline/procedure context. Use
+`pipeline_stable_id`, `procedure_stable_id`, and `parameter_stable_id` to query
+IMPC data; use the stable keys only for IMPReSS links. Treat the `IMPReSS link`
+as navigation metadata, not as a data endpoint, and do not invent or rebuild it
+when it is already supplied.
+
 6. Use the right function.
 
 - Use `solr_request(..., validate=True)` for small queries, previews, counts, facets and URL generation.
