@@ -155,6 +155,32 @@ e. INTERPRETATION: When asked to interpret a score, use a same-core,
    [PhenoDigm score interpretation guidelines](phenodigm-score-interpretation.md)
    when presenting the result.
 
+f. INTERPRETATION OFFER: A `phenodigm_score` summarizes ontology-based
+   similarity between a mouse model and a human disease. Its practical meaning
+   depends on which phenotypes matched and on the user's research goal, and
+   users who ask for disease models, matches or ranked scores often do not know
+   that a profile-based interpretation exists. The workflow in (e) costs two
+   extra requests per disease–model pair, so do not run it unprompted; offer
+   it instead.
+
+   When a response returns or uses `phenodigm_score`, including as one branch
+   of a multi-core result, and the user did not ask for an interpretation, end
+   the response with a short optional offer to interpret one or more of the
+   returned scores. Keep it to one or two sentences: say that interpretation
+   compares the matched phenotypes against the complete disease and mouse-model
+   phenotype profiles, and, when the result has more than one row, ask which
+   disease–model pair(s) to interpret. Suggesting the top-ranked pair or one
+   the user already highlighted is reasonable. Then wait for the user rather
+   than starting the workflow. In the run's `README.md`, note under
+   Limitations and follow-up that the scores are uninterpreted and that a
+   profile-based interpretation is available on request, so the report matches
+   the offer.
+
+   Skip the offer when the user already asked for an interpretation, when the
+   response already contains one, or when the request returned no scores, such
+   as a `rows: 0` count, a facet, or a zero-result query. When the user
+   accepts, run the workflow in (e).
+
 3. Query patterns:
 
 Preferred human symbol to mouse gene identifier resolution (routing only):
