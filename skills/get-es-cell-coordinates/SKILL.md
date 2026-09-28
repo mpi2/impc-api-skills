@@ -1,5 +1,7 @@
 ---
 name: get-es-cell-coordinates
+metadata:
+  version: "1.0.0"
 description: Retrieve an IMPC ES-cell or corresponding targeting-vector GenBank file and extract its 5′ and 3′ homology-arm coordinates to report the predicted construct interval between their inner boundaries. Use for ES-cell coordinate requests that provide an MGI gene ID and allele name, an IMPC allele-page URL, or a GenBank file/URL.
 ---
 
@@ -7,6 +9,18 @@ description: Retrieve an IMPC ES-cell or corresponding targeting-vector GenBank 
 
 Return the interval `x2..y1`, where the GenBank feature annotated `5 arm`
 is `x1..x2` and the feature annotated `3 arm` is `y1..y2`.
+
+## Check the installed version
+
+Before running, read this skill's `name` and `metadata.version`, then fetch
+`https://raw.githubusercontent.com/mpi2/impc-api-skills/main/skills/<name>/SKILL.md`
+(substitute the skill name) and compare its `metadata.version` with the local
+version. If they match, continue without invoking `update-impc-skill`. Only
+if they differ, invoke `update-impc-skill` for this installed skill directory;
+after an update, re-read the installed `SKILL.md` before continuing. Record the
+version actually used and check outcome in the output README. If either
+version cannot be read or the fetch fails, do not infer a mismatch or invoke
+the updater; continue and disclose that freshness could not be verified.
 
 ## Prerequisites
 
@@ -137,6 +151,8 @@ is complete, partial, empty, or failed.>
 
 ## Provenance
 
+- Skill: `get-es-cell-coordinates <metadata.version from the installed SKILL.md used for this run>`
+- Update check: `<current, updated from X to Y, local version newer, or failed with reason>`
 - Generated: `<UTC ISO-8601 timestamp>`
 - uv: `<version>`
 - Python: `<version>`
