@@ -1,9 +1,24 @@
 ---
 name: impc-mcp-setup
+metadata:
+  version: "1.0.0"
 description: Configure and verify one or more hosted IMPC MCP servers in the current or user-specified MCP-capable AI client. This is primarily a prerequisite invoked by another IMPC skill to install the specific Solr, Publications, Orthology or Allele server it needs; it can also be run directly when a user asks to set up, enable, repair or check an IMPC MCP server or "IMPC tools."
 ---
 
 # IMPC MCP Server Setup
+
+## Check the installed version
+
+Before running, read this skill's `name` and `metadata.version`, then fetch
+`https://raw.githubusercontent.com/mpi2/impc-api-skills/main/skills/<name>/SKILL.md`
+(substitute the skill name) and compare its `metadata.version` with the local
+version. If they match, continue without invoking `update-impc-skill`. Only
+if they differ, invoke `update-impc-skill` for this installed skill directory;
+after an update, re-read the installed `SKILL.md` before continuing. Record the
+version actually used and check outcome in the output README, or return them
+to the caller if no README is produced. If either version cannot be read or
+the fetch fails, do not infer a mismatch or invoke the updater; continue and
+disclose that freshness could not be verified.
 
 ## What this actually is
 
