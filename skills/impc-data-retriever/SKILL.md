@@ -76,7 +76,8 @@ Examples:
 
 ## Behaviour
 
-For lethal, subviable, viable, preweaning lethality, or embryo/window-of-lethality
+For lethal, subviable, viable, preweaning, prenatal, postnatal or embryonic
+lethality, or embryo/window-of-lethality
 requests, first read [the viability and embryo guide](./references/viability-and-embryo-guide.md).
 It maps these requests to phenotype IDs and distinguishes viability calls from
 embryonic timing and missing data. Then follow the relevant core guides below.
