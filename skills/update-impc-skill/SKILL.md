@@ -15,12 +15,32 @@ Update only the requested installed skill. The latest published version is
 its directory under `skills/` on the `mpi2/impc-api-skills` GitHub `main` branch.
 This updater must be installed alongside skills that invoke it.
 
+## Check the installed version
+
+Before updating the requested skill, read this updater's `metadata.version`
+and fetch
+`https://raw.githubusercontent.com/mpi2/impc-api-skills/main/skills/update-impc-skill/SKILL.md`.
+If the versions match, continue. If they differ, run the command below once
+with this updater's own installed directory as the target, then re-read its
+installed `SKILL.md`. Do not invoke this skill recursively or repeat its own
+check within the same invocation. If the requested target was the updater
+itself, this also completes that request. If the fetch or version read fails,
+continue with the installed updater and disclose that freshness is unverified.
+Return the updater version actually used and its check outcome to the caller
+for inclusion in its README, if one is produced.
+
+## Update the target
+
 Ensure `uv` is available on `PATH` (use the `uv` skill if needed). Run the
 bundled standard-library script with absolute paths:
 
 ```bash
 uv run --script <updater-directory>/scripts/update_skill.py --install-dir <target-installed-skill-directory>
 ```
+
+If the `uv` skill returns a mismatch for its own skill version after setup,
+use this command for its installed directory before resuming the requested
+update; do not invoke the `uv` skill again.
 
 Locate the target from the
 loaded skill's `SKILL.md`; do not target a development checkout or guess a
