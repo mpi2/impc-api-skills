@@ -54,8 +54,9 @@ statistical call on one side and the GWAS study accession on the other.
 
 ## Inputs this skill accepts
 
-- one or more mouse genes (symbol or MGI id), optionally with a phenotype focus
-  ("Mtor kidney phenotypes → GWAS");
+- one or more mouse genes (symbol or MGI id) or human gene symbols, optionally
+  with a phenotype focus ("Mtor kidney phenotypes → GWAS" or
+  "human MTOR → IMPC and GWAS");
 - an MP term ("genes with decreased BUN → human traits");
 - the reverse: a GWAS trait, EFO/MONDO id or GCST study, asking which IMPC
   phenotypes or knockouts support it.
@@ -71,6 +72,11 @@ files in hop order. Keep an attempt log from the first request; the README is
 built from it (see Output). Scripts print row counts to stderr; capture them.
 
 ### 1. IMPC genes and phenotypes
+
+For human gene input, first resolve the one-to-one mouse ortholog with
+`find_orthologs_by_human_genes` or `scripts/orthologs.py --human`, then query
+IMPC using the returned MGI id. For mouse gene input, step 2 resolves the human
+ortholog for the GWAS lookup.
 
 Follow `impc-data-retriever`. One query, whichever way the user starts:
 `genotype-phenotype` core, filtered by gene (`marker_symbol:Mtor`,
