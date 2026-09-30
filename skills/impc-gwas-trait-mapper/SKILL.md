@@ -1,6 +1,7 @@
 ---
 name: impc-gwas-trait-mapper
-description: Link IMPC mouse knockout phenotypes to human GWAS traits, in either direction. Given IMPC genes or MP phenotypes, it retrieves the IMPC phenotypes, maps mouse genes to human one-to-one orthologs (IMPC orthology MCP), follows Open Targets locus-to-gene (L2G) evidence through credible sets to GWAS studies, resolves each study's EFO/MONDO/HP/OBA traits (Open Targets study index, GWAS Catalog MCP/API) and scores every mouse phenotype against every trait with OLS embedding similarity (MP vs EFO). Use it whenever a user mentions IMPC, mouse knockouts or MP terms together with GWAS, GWAS Catalog, human traits, credible sets, L2G, Open Targets genetics or EFO, or asks whether a mouse phenotype "translates", "matches", "is consistent with" or "supports" a human association, even if they never say "map". Also use it for the reverse question: which IMPC phenotypes or knockout genes support a GWAS trait or study.
+description: >-
+  Link IMPC mouse knockout phenotypes to human GWAS traits, in either direction. Given mouse or human genes or MP phenotypes, it resolves one-to-one orthologs, retrieves IMPC phenotypes, follows Open Targets locus-to-gene (L2G) evidence through credible sets to GWAS studies, resolves each study's EFO/MONDO/HP/OBA traits (Open Targets study index, GWAS Catalog MCP/API) and scores every mouse phenotype against every trait with OLS embedding similarity (MP vs EFO). Use it whenever a user mentions IMPC, mouse knockouts or MP terms together with GWAS, GWAS Catalog, human traits, credible sets, L2G, Open Targets genetics or EFO, or asks whether a mouse phenotype "translates", "matches", "is consistent with" or "supports" a human association, even if they never say "map". Also use it for the reverse question: which IMPC phenotypes or knockout genes support a GWAS trait or study.
 ---
 
 # IMPC phenotypes ↔ GWAS traits
@@ -372,6 +373,13 @@ In the result directory:
   similarity model and display cutoff you used, and the limitations: genes without orthologs,
   FinnGen studies, the L2G floor, coarse trait mappings, and any MCP server
   that was down and what replaced it.
+  The `## Result summary` section always contains the same results table shown
+  in the conversation, same columns and same display cutoff, preceded by the
+  model, the run's min / median / max and the cutoff with the count of pairs
+  it keeps. Generate the table rows with pandas from
+  `06_impc_gene_to_gwas_trait.csv`, not by copying the chat table, and fill
+  every cell (no "same as above"). When no pair reaches the cutoff, include
+  the highest few rows and say so.
 
 ## Reverse direction (GWAS trait or study → IMPC)
 
