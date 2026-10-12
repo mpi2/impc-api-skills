@@ -239,9 +239,10 @@ values into a narrow range, so the ordering within a run is informative while
 absolute values are not comparable across models. Show the per-run
 distribution (min / median / max) so the reader can place each score.
 
-Display cutoff: by default list pairs with similarity ≥ 0.60 in the
-user-facing table, say that this cutoff is a display choice and that the full
-table is in `05_…similarity.csv`. Use whatever cutoff the user asks for.
+Display cutoff: by default the user-facing table draws from pairs with
+similarity ≥ 0.60 and shows the top 10 of them (see Output). Say that the
+cutoff is a display choice and that the full table is in
+`05_…similarity.csv`. Use whatever cutoff or row count the user asks for.
 
 If the trait list is long, restrict it before scoring, typically to traits from
 credible sets where the gene ranks top-3 by L2G, and say which filter you used.
@@ -325,9 +326,17 @@ tuned.
 
 ## Output
 
-In the conversation: a short synthesis, then a table of the pairs above the
-display cutoff, with the model and the run's score distribution stated once.
-Example:
+In the conversation: a short synthesis, then a table of the top 10 pairs at
+or above the display cutoff, in the main table's sort order (`similarity`
+desc, then L2G desc), with the model and the run's score distribution stated
+once. A run can put hundreds of pairs above the cutoff (Pnpt1: 216 of 288);
+printing them all fills the conversation and the README with rows the CSV
+already holds, and the reader only needs the headline to decide where to look
+next. Follow the table with one line saying how many rows are shown and where
+the rest are, e.g. "Top 10 of 216 pairs with similarity ≥ 0.60. Full table:
+`06_impc_gene_to_gwas_trait.csv` (288 rows), loadable with `pandas.read_csv`."
+When 10 or fewer pairs reach the cutoff, show them all and drop the "top 10"
+wording. Show more rows only when the user asks for them. Example:
 
 | IMPC phenotype | GWAS trait | Similarity | L2G score (rank, top gene) | Signals | Best set: fine-mapping, lead variant, β | Study |
 | --- | --- | ---: | --- | --- | --- | --- |
@@ -374,12 +383,14 @@ In the result directory:
   FinnGen studies, the L2G floor, coarse trait mappings, and any MCP server
   that was down and what replaced it.
   The `## Result summary` section always contains the same results table shown
-  in the conversation, same columns and same display cutoff, preceded by the
-  model, the run's min / median / max and the cutoff with the count of pairs
-  it keeps. Generate the table rows with pandas from
-  `06_impc_gene_to_gwas_trait.csv`, not by copying the chat table, and fill
-  every cell (no "same as above"). When no pair reaches the cutoff, include
-  the highest few rows and say so.
+  in the conversation: same columns, same display cutoff, same top-10 cap and
+  the same "Top 10 of N pairs … Full table: …" line after it. The README is
+  read back into context by people and agents, so the cap matters there as
+  much as in the chat. Precede the table with the model, the run's min /
+  median / max and the cutoff with the count of pairs it keeps. Generate the
+  table rows with pandas from `06_impc_gene_to_gwas_trait.csv`, not by copying
+  the chat table, and fill every cell (no "same as above"). When no pair
+  reaches the cutoff, include the highest few rows and say so.
 
 ## Reverse direction (GWAS trait or study → IMPC)
 
