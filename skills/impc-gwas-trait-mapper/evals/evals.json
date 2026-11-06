@@ -1,0 +1,55 @@
+{
+  "skill_name": "impc-gwas-trait-mapper",
+  "evals": [
+    {
+      "id": 0,
+      "prompt": "I want to know whether the IMPC knockout phenotypes for the mouse gene Mtor line up with any human GWAS traits. Get the IMPC phenotypes, map the gene to its human ortholog, find the GWAS studies Open Targets links to it via L2G / credible sets, get the traits for those studies, and score how similar each mouse phenotype is to each GWAS trait. Save the tables and a README in a directory called mtor_gwas_eval.",
+      "expected_output": "Directory with IMPC phenotype CSV (3 Mtor MP terms), ortholog row (MTOR HGNC:3942), Open Targets link table (~30 credible sets, GCST + FinnGen studies with L2G scores and rank), trait table with EFO/MONDO ids, pairwise MP x trait similarity table with 0-1 scores, a joined final table, and a README documenting every hop with status. Synthesis reports the traits with their similarity scores and the model, states the run's score distribution, and shows which loci carry rank-1 L2G >= 0.5 for MTOR (AS, T2D, smoking initiation) without labelling pairs as matched/unmatched.",
+      "files": [],
+      "assertions": [
+        "IMPC phenotype table exists as CSV with mp_term_id and mp_term_name columns and contains MP:0005566 (decreased blood urea nitrogen level)",
+        "Ortholog step resolves Mtor to human MTOR with HGNC:3942 (one-to-one)",
+        "Open Targets link table has >=25 unique credible sets for MTOR with an L2G score column and a rank-in-locus (or top-gene) column",
+        "GWAS study ids appear as GCST accessions and FinnGen ids are labelled as non-GWAS-Catalog",
+        "Trait table carries ontology ids (EFO_/MONDO_/HP_/OBA) not just free-text trait names",
+        "Pairwise MP x trait similarity table exists with numeric 0-1 scores for every MP term against the traits",
+        "Final synthesis reports similarity as numbers with the model named and the run distribution (min/median/max), and does not translate scores into qualitative labels such as match/related/background",
+        "README documents each hop (IMPC, orthology, Open Targets, traits, similarity) with the service/tool used and a status, plus limitations (L2G floor, FinnGen, similarity != mechanism)",
+        "Table shown in the conversation has at most 10 data rows, followed by a line giving the number of pairs passing the selection rule (top-K filter, or the 0.60 display cutoff with --top-k 0) and naming 06_impc_gene_to_gwas_trait.csv as the full table",
+        "README Result summary table has at most 10 data rows, states how many pairs pass the selection rule (top-K filter, or the 0.60 display cutoff with --top-k 0), and points to 06_impc_gene_to_gwas_trait.csv for the full table",
+        "No credibleSets(regions:) or unfiltered 2,600-disease paging attempts are needed; run completes without dead-end query attempts recorded"
+      ]
+    },
+    {
+      "id": 1,
+      "prompt": "Which IMPC knockout phenotypes support the ankylosing spondylitis GWAS study GCST90480502? Take the genes that Open Targets L2G ranks first at their credible set with a score of at least 0.5, find their mouse one-to-one orthologs, pull the IMPC phenotypes for those mouse genes, and score each phenotype against the study's trait. Put the results in as_gwas_eval/.",
+      "expected_output": "Study resolved to MONDO_0005306 ankylosing spondylitis; credible sets for GCST90480502 pulled from Open Targets (~150-300), filtered to rank-1 L2G >= 0.5 genes; human->mouse orthologs; IMPC genotype-phenotype rows for the mouse genes (some genes will have none - listed); OLS similarity of each MP term vs MONDO_0005306 with immune/skeletal phenotypes scoring highest; README with every hop, counts in/out, and honest statement that similarity != mechanism.",
+      "files": [],
+      "assertions": [
+        "Study GCST90480502 resolved to MONDO_0005306 ankylosing spondylitis with an ontology id",
+        "Credible sets for the study retrieved from Open Targets and filtered to rank-1 L2G >= 0.5 genes with counts before/after filtering reported",
+        "Human -> mouse one-to-one orthologs obtained for the filtered genes; genes without an ortholog are listed",
+        "IMPC genotype-phenotype rows retrieved for the mouse orthologs from the genotype-phenotype core; genes with no IMPC data are listed rather than dropped silently",
+        "Each MP term scored against MONDO_0005306 with a numeric OLS similarity; immune or skeletal MP terms rank highest",
+        "Final output keeps gene, L2G score, MP term id/name, and similarity in one table",
+        "README documents every hop with status and states explicitly that similarity does not imply shared mechanism",
+        "Run does not misuse an obsolete EFO id and does not claim zero results where a transport error occurred"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Map the IMPC phenotypes of mouse Tyk2 to human GWAS traits via Open Targets L2G, save to tyk2_models_eval/. When you show me the final table, I also want mouse disease models: pick skin disorder and find IMPC or MGI models for it.",
+      "expected_output": "Full gene -> GWAS run (files 01-06) followed by step 7 for skin disorder only: the assistant proposes the top-5 MP terms by similarity (abnormal skin morphology first) and 3-6 disease_term keywords (skin, psoria*, eczema, dermat*), confirms them, then runs two phenodigm queries for marker_id MGI:1929470 - curated unfiltered (Immunodeficiency 35, OMIM:611521) and predicted filtered on the keywords (about 10 rows: autoinflammation-panniculitis-dermatosis, generalized pustular psoriasis, palmoplantar hyperkeratosis). Table lists curated first, then predicted ranked by chosen-MP hits then phenodigm_score, one best model per disease, IMPC models marked. 07_disease_models.csv written with search_mp_terms and search_keywords columns; README has a phenodigm hop.",
+      "files": [],
+      "assertions": [
+        "Step 7 runs only after the step 6 table and only for the trait the user named (skin disorder), not for every trait",
+        "Assistant shows the chosen MP terms (top by similarity, abnormal skin morphology included) and the disease_term keywords before querying, and records them in 07_disease_models.csv",
+        "Curated query uses type:disease_model_summary AND marker_id:\"MGI:1929470\" AND association_curated:true with the phenodigm_score alias in fl, and reports Immunodeficiency 35 (OMIM:611521) labelled Associated (curated)",
+        "Predicted query filters on association_curated:false AND disease_term:(keywords) and returns skin-related diseases (e.g. generalized pustular psoriasis ORPHA:247353), not the unfiltered 2,000+ predicted rows",
+        "Chat table has columns for status (Associated/Predicted), model with source (IMPC/MGI), phenodigm_score as a number, and chosen-MP matched count n/k",
+        "No raw disease_model_avg_norm or disease_model_max_norm values appear in outputs",
+        "README documents the phenodigm hop with Core: phenodigm, both queries, rows in/out, and states that PhenoDigm similarity is independent of L2G and MP-trait similarity"
+      ]
+    }
+  ]
+}

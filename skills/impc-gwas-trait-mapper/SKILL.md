@@ -130,7 +130,12 @@ locus over several mouse genes and make the final table unreadable.
 
 Keep `mgiGeneAccId, mouseGeneSymbol, hgncAccId, humanGeneSymbol, supportCount`.
 Genes with no one-to-one ortholog stop here; list them under limitations
-rather than substituting a paralog.
+rather than substituting a paralog. If the user then asks to continue, show
+the pairs from `orthologs.py --mgi … --all-relationships` and let them choose;
+write only the chosen pairs to `02_orthologs.csv` and label them
+non-one-to-one in the README. One mouse gene may keep several human genes
+(Slco1b2 → SLCO1B1 and SLCO1B3): the join in step 6 handles each pair
+separately, so its phenotypes appear once per human gene.
 
 ### 3. Open Targets: L2G → credible set → GWAS study → mapped traits
 
@@ -213,19 +218,54 @@ uv run skills/impc-gwas-trait-mapper/scripts/ols_similarity.py \
   --out 05_phenotype_trait_similarity.csv
 ```
 
-It calls OLS `getClassSimilarity` for every pair (cosine similarity of the two
-classes' embeddings) and ranks within phenotype and within trait. For two or
-three pairs the MCP tool by hand is fine; beyond that, the script (~30 pairs/s).
+By default it applies a **top-20 neighbourhood filter, per ontology**: for each
+MP term, OLS returns the term's 20 nearest classes in each of EFO, MONDO, OBA,
+HP and GO (up to 100 neighbours; obsolete classes and MONDO's non-human animal
+disease branch are dropped). A GWAS trait is kept for that MP term only if it
+is among the 20 nearest classes of its own ontology. The trait list plays no
+part in choosing the neighbours, so a trait has to beat every class in its
+ontology, not just the other traits Open Targets returned. Kept pairs get the
+usual `getClassSimilarity` score and are ranked within phenotype and within
+trait. `knn_rank` (1–20) is the rank within `knn_ontology`.
+`05_…_neighbours.csv` lists every MP term's neighbours with `is_gwas_trait`;
+keep it as an output, since it shows what the traits competed against.
+
+K changes how many neighbours each OLS search returns, not how many searches
+run: every MP term costs 1 + 5 OLS calls at any K, plus one
+`getClassSimilarity` per kept pair. K = 20 was chosen on CYP2C19, AARS1,
+Tyk2 + Ldlr and Mtor (37 MP terms, 171 traits): K = 10 kept 15 pairs, K = 20
+keeps 25, and the 10 added pairs are of the same kind (enlarged heart ↔ heart
+failure, increased circulating sodium ↔ primary aldosteronism). From about
+rank 25, unrelated pairs start to appear (increased lean body mass ↔
+hypertensive disorder, abnormal spleen morphology ↔ aneurysm), which is why K
+stops at 20. Numbers and examples: `references/ols-similarity-guide.md`.
+
+The filter is still strict (CYP2C19: 0 pairs; Mtor: 4 pairs from 3 MP terms × 42 traits). An empty
+result is a result: report it, with the neighbours file, and still
+run step 6 on it (the join leaves similarity blank and keeps rows on the L2G
+rank rule). Change the
+filter only when the user asks, and say which option you used: `--top-k N`
+(other K), `--top-k-scope pooled` (K slots shared across all ontologies,
+stricter: Robinow → 0 at K = 10), or `--top-k 0` (score every pair, no filter). Trait
+ids from ontologies outside `--ontologies` cannot pass the filter; the script
+warns with a count, and the README should name them. GO is searched by
+default because Open Targets maps drug-response studies to GO terms
+(CYP2C19: 4 of 17 trait ids); its nearest classes are biological processes,
+so a GO trait passes only when it sits close to the MP term's biology. See
+`references/ols-similarity-guide.md` for details.
 
 The model is a user choice between two, offered in these terms:
 
-- **breadth** — `harrier-oss-v1-27b_pca512` (default). Broader coverage of
-  the ontologies and more scores; the model to use when looking for "deep
-  cuts", i.e. traits a narrower model would leave near the floor.
-- **precision** — `text-embedding-3-large_pca512`. Tighter; the model to use
-  when the question is "which single trait is closest to this phenotype".
+- **precision** — `text-embedding-3-large_pca512` (default). Tighter; the
+  model to use when the question is "which single trait is closest to this
+  phenotype". It suits the top-20 neighbourhood filter, which asks the same
+  question of each ontology.
+- **breadth** — `harrier-oss-v1-27b_pca512`. Broader coverage of the
+  ontologies and more scores; the model to use when looking for "deep cuts",
+  i.e. traits a narrower model would leave near the floor. Too broad for the
+  top-20 filter: its nearest classes crowd out the GWAS traits.
 
-If the user does not say, use breadth and state that. If they name a model,
+If the user does not say, use precision and state that. If they name a model,
 pass `--model <name>`; if they want both, pass `--model harrier-oss-v1-27b_pca512
 text-embedding-3-large_pca512` and the output has one row per pair per model
 with per-model ranks. `--list-models` (or the MCP tool `listEmbeddingModels`)
@@ -241,15 +281,41 @@ values into a narrow range, so the ordering within a run is informative while
 absolute values are not comparable across models. Show the per-run
 distribution (min / median / max) so the reader can place each score.
 
-Display cutoff: by default the user-facing table draws from pairs with
-similarity ≥ 0.60 and shows the top 10 of them (see Output). Say that the
-cutoff is a display choice and that the full table is in
-`05_…similarity.csv`. Use whatever cutoff or row count the user asks for.
+Selection rule: with the top-20 filter on (the default), the filter is the
+quality cut, so the user-facing table shows every scored pair, ranked, capped
+at the top 10 (see Output). No similarity cutoff is applied on top: in the
+filtered runs so far (AARS1, Cyp2c38 + Cyp2d22 + Slco1b2: 7 pairs) every pair
+that passed scored ≥ 0.76, so a 0.60 cutoff removed nothing and only suggested
+a second, uncalibrated threshold. A pair that passes with a low score is still
+shown; its number sits next to it. State the
+filter (K, scope, ontologies) as the selection rule. Only with `--top-k 0`
+(every pair scored, no filter) apply a display cutoff of similarity ≥ 0.60,
+because then it is what keeps volume down (Tyk2 + Ldlr: 513 of 2,400 pairs
+below 0.60), and state it as a display choice. The full table is in
+`05_…similarity.csv`. Use whatever cutoff, K or row count the user asks for.
 
 If the trait list is long, restrict it before scoring, typically to traits from
 credible sets where the gene ranks top-3 by L2G, and say which filter you used.
 
 ### 6. Join and rank
+
+```bash
+uv run skills/impc-gwas-trait-mapper/scripts/join_gene_trait.py --phenotypes 01_impc_phenotypes.csv \
+  --orthologs 02_orthologs.csv --links 03_l2g_gwas_links.csv --traits 04_gwas_traits.csv \
+  --similarity 05_phenotype_trait_similarity.csv \
+  --out 06_impc_gene_to_gwas_trait.csv --detail-out 06_detail_impc_call_x_credible_set.csv
+```
+
+Do not rebuild the join by hand: the script joins each IMPC call only to its
+own gene's credible sets, breaks L2G ties at the best set by
+`study_locus_id` (so reruns give the same row), copies values as written
+(pandas rewrites float digits), and names on stderr every gene whose branch
+stopped (no ortholog, no credible sets) and any row without a similarity.
+`--max-rank` and `--min-similarity` change the main-table filter (by default
+`--min-similarity` follows step 5: any score with the top-K filter, 0.60 with
+`--top-k 0`); `--model`
+keeps one model when step 5 scored several, otherwise rows repeat per model
+with a `similarity_model` column.
 
 Two files, two grains.
 
@@ -299,9 +365,11 @@ Sort both by `similarity` desc, then L2G desc. A row is only as strong as its
 weakest link: a high similarity on an L2G-0.1 set still rests on a weak gene
 assignment; show both numbers and let the reader weigh them.
 
-Default the main table to rows where `best_cs_l2g_rank` ≤ 3 **or**
-`similarity` ≥ 0.60, state that filter in the README, and keep the detail
-table unfiltered (Tyk2: 741 pairs, 4,949 detail rows).
+The main table defaults to rows where `best_cs_l2g_rank` ≤ 3 **or** the pair
+has a similarity score (it passed the top-K filter); with `--top-k 0` the
+second condition becomes `similarity` ≥ 0.60. The script prints the rule it
+used on stderr; state that filter in the README. The detail table is unfiltered (Tyk2 + Ldlr: 1,113 pairs, 8,560
+detail rows).
 
 ### 7. Mouse disease models (only when the user asks)
 
@@ -328,17 +396,18 @@ tuned.
 
 ## Output
 
-In the conversation: a short synthesis, then a table of the top 10 pairs at
-or above the display cutoff, in the main table's sort order (`similarity`
-desc, then L2G desc), with the model and the run's score distribution stated
-once. A run can put hundreds of pairs above the cutoff (Pnpt1: 216 of 288);
+In the conversation: a short synthesis, then a table of the top 10 scored
+pairs (with `--top-k 0`: the top 10 at or above the 0.60 display cutoff), in
+the main table's sort order (`similarity` desc, then L2G desc), with the model
+and the run's score distribution stated once. An unfiltered run can put
+hundreds of pairs above the cutoff (Pnpt1: 216 of 288);
 printing them all fills the conversation and the README with rows the CSV
 already holds, and the reader only needs the headline to decide where to look
 next. Follow the table with one line saying how many rows are shown and where
-the rest are, e.g. "Top 10 of 216 pairs with similarity ≥ 0.60. Full table:
+the rest are, e.g. "Top 10 of 25 scored pairs (top-20 filter). Full table:
 `06_impc_gene_to_gwas_trait.csv` (288 rows), loadable with `pandas.read_csv`."
-When 10 or fewer pairs reach the cutoff, show them all and drop the "top 10"
-wording. Show more rows only when the user asks for them. Example:
+(with `--top-k 0`: "Top 10 of 216 pairs with similarity ≥ 0.60 …"). When 10
+or fewer pairs qualify, show them all and drop the "top 10" wording. Show more rows only when the user asks for them. Example:
 
 | IMPC phenotype | GWAS trait | Similarity | L2G score (rank, top gene) | Signals | Best set: fine-mapping, lead variant, β | Study |
 | --- | --- | ---: | --- | --- | --- | --- |
@@ -367,8 +436,9 @@ Rows from the Tyk2 run (model `harrier-oss-v1-27b_pca512`; 741 pairs, min
 
 The synthesis describes what the table shows (which traits, their scores,
 which loci carry a strong L2G assignment for the gene) and stops there. It
-does not declare pairs matched or unmatched. When no pair reaches the display
-cutoff, say that and show the highest few anyway so the reader sees the scale.
+does not declare pairs matched or unmatched. When no pair passes the filter
+(or, with `--top-k 0`, reaches the cutoff), say that and point to the
+neighbours file (or show the highest few pairs) so the reader sees the scale.
 End with the step 7 offer (disease models, which traits?) as a question, not
 an action; run step 7 only on a yes.
 
@@ -381,18 +451,18 @@ In the result directory:
   or function, exact query or command, and status (`worked` / `zero results` /
   `failed` / `not run`). Non-IMPC hops use `Service:` where IMPC hops use
   `Core:`. Include the process log with rows in and out of each join, the
-  similarity model and display cutoff you used, and the limitations: genes without orthologs,
+  similarity model and selection rule (filter, or cutoff with `--top-k 0`) you used, and the limitations: genes without orthologs,
   FinnGen studies, the L2G floor, coarse trait mappings, and any MCP server
   that was down and what replaced it.
   The `## Result summary` section always contains the same results table shown
-  in the conversation: same columns, same display cutoff, same top-10 cap and
+  in the conversation: same columns, same selection rule, same top-10 cap and
   the same "Top 10 of N pairs … Full table: …" line after it. The README is
   read back into context by people and agents, so the cap matters there as
   much as in the chat. Precede the table with the model, the run's min /
-  median / max and the cutoff with the count of pairs it keeps. Generate the
+  median / max and the selection rule with the count of pairs it keeps. Generate the
   table rows with pandas from `06_impc_gene_to_gwas_trait.csv`, not by copying
   the chat table, and fill every cell (no "same as above"). When no pair
-  reaches the cutoff, include the highest few rows and say so.
+  qualifies, say so (and with `--top-k 0` include the highest few rows).
 
 ## Reverse direction (GWAS trait or study → IMPC)
 
