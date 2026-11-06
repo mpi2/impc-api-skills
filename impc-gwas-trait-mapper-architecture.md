@@ -18,17 +18,23 @@ flowchart LR
             R2["impc-orthology MCP*<br/>scripts/orthologs.py"]
             S2 ~~~ R2
         end
-        subgraph P3["3. Find candidate gene-trait with OT"]
+        subgraph P2b["2b. Tissue expression context"]
             direction TB
-            S3["L2G causal gene → credible sets → GWAS studies<br/><i>L2G score, lead allele, lead-variant β, mapped trait ids</i>"]
+            S2b["HPA tissue specificity per human gene<br/><i>category, tau, enriched + top tissues (nTPM)</i>"]
+            R2b["Human Protein Atlas API<br/>scripts/hpa_tissue_expression.py"]
+            S2b ~~~ R2b
+        end
+        subgraph P2c["2c. Reactome pathways"]
+            direction TB
+            S2c["Lowest-level pathways per human ortholog<br/><i>HGNC → reviewed UniProt accession → Reactome; reactions with gene / total, pathway size</i>"]
+            R2c["UniProt REST + Reactome REST<br/>scripts/reactome_pathways.py"]
+            S2c ~~~ R2c
+        end
+        subgraph P3["3–4. Find candidate gene-trait with OT"]
+            direction TB
+            S3["L2G causal gene → credible sets → GWAS studies → study traits<br/><i>L2G score, lead allele, lead-variant β, EFO/MONDO/HP/OBA ids from the OT study index</i>"]
             R3["Open Targets MCP*<br/>scripts/ot_gene_to_gwas.py"]
             S3 ~~~ R3
-        end
-        subgraph P4["4. Cross reference against GWAS catalog"]
-            direction TB
-            S4["GWAS Catalog cross-check (mandatory)<br/><i>Catalog EFO traits vs step 3 traits: agree / differ</i>"]
-            R4["GWAS Catalog MCP / REST v2*<br/>scripts/gwas_catalog_traits.py"]
-            S4 ~~~ R4
         end
         subgraph P5["5. Get trait-phenotype similarity"]
             direction TB
@@ -36,10 +42,18 @@ flowchart LR
             R5["OLS MCP*<br/>scripts/ols_similarity.py"]
             S5 ~~~ R5
         end
-        P1 --> P2 --> P3 --> P4 --> P5
+        subgraph P6["6. Join and rank"]
+            direction TB
+            S6["IMPC call × own gene's credible sets × study traits × similarity<br/><i>main: gene × MP term × trait, best credible set by L2G; detail: unfiltered</i>"]
+            R6["local<br/>scripts/join_gene_trait.py"]
+            S6 ~~~ R6
+        end
+        P1 --> P2 --> P3 --> P5 --> P6
+        P2 -.-> P2b
+        P2 -.-> P2c
     end
 
-    OUT[("06_impc_gene_to_gwas_trait.csv<br/>README.md")]
+    OUT[("06_impc_gene_to_gwas_trait.csv<br/>02_hpa_tissue_expression.csv<br/>02_reactome_pathways.csv<br/>README.md")]
 
     Q --> Skill --> OUT
 
@@ -50,13 +64,17 @@ flowchart LR
     classDef input fill:#e5e5e5,stroke:#737373,color:#1a1a1a
     classDef group fill:none,stroke:#94a3b8
     class Q input
-    class S1,S2,S3,S4,S5 step
-    class R1,R2,R3,R4,R5 source
+    class S1,S2,S2b,S2c,S3,S5,S6 step
+    class R1,R2,R2b,R2c,R3,R5,R6 source
     class OUT output
-    class Skill,P1,P2,P3,P4,P5 group
+    class Skill,P1,P2,P2b,P2c,P3,P5,P6 group
 ```
 
 \* Script listed under the MCP is a fallback; the skill uses whichever is available.
+
+The GWAS Catalog trait cross-check (former step 4) is archived in
+`archive/impc-gwas-trait-mapper/gwas-catalog/`; trait ids come from the Open Targets study index only.
+
 
 ## Optional step 7: disease/model identification
 
@@ -68,10 +86,10 @@ trait(s). The search recipe lives in
 flowchart LR
     subgraph Skill2["impc-gwas-trait-mapper"]
         direction LR
-        subgraph P16["1–5. IMPC phenotypes → orthologs → OT L2G → GWAS Catalog → similarity"]
+        subgraph P16["1–6. IMPC phenotypes → orthologs → OT L2G → similarity → join"]
             direction TB
             S16["Gene → GWAS trait table<br/><i>MP term, trait id, similarity, L2G, best credible set</i>"]
-            R16["impc-data-retriever · impc-orthology MCP · Open Targets MCP<br/>GWAS Catalog MCP · OLS MCP (see plot above)"]
+            R16["impc-data-retriever · impc-orthology MCP · Open Targets MCP<br/>OLS MCP (see plot above)"]
             S16 ~~~ R16
         end
         Q2[/"Prompt: mouse disease models for which trait(s)?"/]
@@ -99,3 +117,8 @@ flowchart LR
     class OUT2 output
     class Skill2,P16,P7 group
 ```
+
+## Current drawbacks
+- GWAS Catalog step archived (MCP unreliable, trait ids redundant with Open Targets); revisit if a reason to prefer the Catalog appears
+- OLS MCP fetching terms by top k is not straightforward 
+- Reminder: These matches have not undergone statistical testing

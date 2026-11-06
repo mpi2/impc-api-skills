@@ -1,7 +1,7 @@
 ---
 name: impc-gwas-trait-mapper
 description: >-
-  Link IMPC mouse knockout phenotypes to human GWAS traits, in either direction. Given mouse or human genes, an MP phenotype, or a GWAS trait or study, it resolves one-to-one orthologs, retrieves IMPC phenotypes, follows Open Targets locus-to-gene (L2G) evidence through credible sets to GWAS studies, resolves each study's EFO/MONDO/HP/OBA traits from the Open Targets study index and scores every mouse phenotype against every trait with OLS embedding similarity (MP vs EFO). Each human ortholog also gets its Reactome pathways as gene-level context. Use it whenever a user mentions IMPC, mouse knockouts or MP terms together with GWAS, GWAS Catalog, human traits, credible sets, L2G, Open Targets genetics or EFO, or asks whether a mouse phenotype "translates", "matches", "is consistent with" or "supports" a human association, even if they never say "map". Also use it for the reverse question: which IMPC phenotypes or knockout genes support a GWAS trait or study.
+  Link IMPC mouse knockout phenotypes to human GWAS traits, in either direction. Given mouse or human genes, an MP phenotype, or a GWAS trait or study, it resolves one-to-one orthologs, retrieves IMPC phenotypes, follows Open Targets locus-to-gene (L2G) evidence through credible sets to GWAS studies, resolves each study's EFO/MONDO/HP/OBA traits from the Open Targets study index and scores every mouse phenotype against every trait with OLS embedding similarity (MP vs EFO). Each human ortholog also gets Human Protein Atlas tissue expression and its Reactome pathways as gene-level context. Use it whenever a user mentions IMPC, mouse knockouts or MP terms together with GWAS, GWAS Catalog, human traits, credible sets, L2G, Open Targets genetics or EFO, or asks whether a mouse phenotype "translates", "matches", "is consistent with" or "supports" a human association, even if they never say "map". Also use it for the reverse question: which IMPC phenotypes or knockout genes support a GWAS trait or study.
 ---
 
 # IMPC phenotypes ↔ GWAS traits
@@ -20,6 +20,7 @@ effort for the biology and the report.
 ```
 IMPC gene / phenotypes (MGI, MP)               impc-data-retriever skill
   → human one-to-one ortholog (HGNC)            impc-orthology MCP · scripts/orthologs.py
+    ↳ tissue expression context (experimental)  Human Protein Atlas API · scripts/hpa_tissue_expression.py
     ↳ Reactome pathways (experimental)          UniProt + Reactome REST · scripts/reactome_pathways.py
   → L2G evidence → credible set → GWAS study    Open Targets MCP · scripts/ot_gene_to_gwas.py
   → study traits (EFO/MONDO/HP/OBA ids)         Open Targets study index (same script)
@@ -48,9 +49,11 @@ statistical call on one side and the GWAS study accession on the other.
    | `impc-orthology` `https://www.ebi.ac.uk/mi/impc/mcp/orthology/` | `find_orthologs_by_mgi_ids`, `find_orthologs_by_mouse_genes`, `find_orthologs_by_human_genes` | `scripts/orthologs.py` |
    | OLS `https://www.ebi.ac.uk/ols4/api/mcp` | `getClassSimilarity` (pair scores), `listEmbeddingModels` | `scripts/ols_similarity.py` |
 
-   Step 2c uses `scripts/reactome_pathways.py` (UniProt and Reactome REST, no
-   key) even when a Reactome MCP is loaded: the script writes the CSV and runs
-   the mis-map check; the MCP is fine for one-off checks of a gene or pathway.
+   Human Protein Atlas has no official MCP server; step 2b always uses
+   `scripts/hpa_tissue_expression.py` (public API, no key). Step 2c uses
+   `scripts/reactome_pathways.py` (UniProt and Reactome REST, no key) even
+   when a Reactome MCP is loaded: the script writes the CSV and runs the
+   mis-map check; the MCP is fine for one-off checks of a gene or pathway.
 
    Check which tools are actually loaded in this session. When a server is
    missing or times out, use the script and say so in the README; do not stall
@@ -142,6 +145,22 @@ non-one-to-one in the README. One mouse gene may keep several human genes
 (Slco1b2 → SLCO1B1 and SLCO1B3): the join in step 6 handles each pair
 separately, so its phenotypes appear once per human gene.
 
+### 2b. Human tissue expression context (HPA, experimental)
+
+Experimental: the output format may change and there are no evals for it yet.
+
+One row per human ortholog: HPA's tissue-specificity call, tau, enriched
+tissues and cell types, and the top tissues by nTPM. Read
+`references/hpa-guide.md` for the fields, API quirks and report table. Then:
+
+```bash
+uv run skills/impc-gwas-trait-mapper/scripts/hpa_tissue_expression.py \
+  --from-csv 02_orthologs.csv --id-col humanGeneSymbol --out 02_hpa_tissue_expression.csv
+```
+
+Add `--tissues-out 02_hpa_tissue_ntpm.csv` only when the user wants all 51
+tissue values.
+
 ### 2c. Reactome pathways per human ortholog (experimental)
 
 Experimental: the output format may change and there are no evals for it yet.
@@ -160,10 +179,11 @@ uv run skills/impc-gwas-trait-mapper/scripts/reactome_pathways.py \
 
 The output is a table only: no chart and no enrichment test.
 
-Step 2c is gene context: it does not join into the step 6 table, and the skill
-does not map phenotypes or traits to pathways. Report the source's own content
-and never say a pathway or disease "matches", "explains" or "supports" a
-phenotype or trait. The reader judges that.
+Steps 2b and 2c are gene context: they do not join into the
+step 6 table, and the skill does not map phenotypes or traits to tissues
+or pathways. Report each source's own content and never say
+a tissue, pathway or disease "matches", "explains" or "supports" a phenotype
+or trait. The reader judges that.
 
 ### 3. Open Targets: L2G → credible set → GWAS study → mapped traits
 
@@ -462,8 +482,9 @@ Rows from the Tyk2 run (model `harrier-oss-v1-27b_pca512`; 741 pairs, min
   to the cell; they repeat what the id and the sign say. The rsID stays in
   `03_l2g_gwas_links.csv` (`rsids`) for readers who want it.
 
-After that line, the Reactome pathway table in the format given in
-`references/reactome-guide.md` ("Report table").
+After that line, the tissue-expression table in the format given in
+`references/hpa-guide.md` ("Report table"), then the Reactome pathway table
+in the format given in `references/reactome-guide.md` ("Report table").
 
 The synthesis describes what the table shows (which traits, their scores,
 which loci carry a strong L2G assignment for the gene) and stops there. It
@@ -494,8 +515,10 @@ In the result directory:
   table rows with pandas from `06_impc_gene_to_gwas_trait.csv`, not by copying
   the chat table, and fill every cell (no "same as above"). When no pair
   qualifies, say so (and with `--top-k 0` include the highest few rows). Follow it with
-  the same Reactome pathway table, generated with pandas from its CSV, and the
-  README notes from `references/reactome-guide.md`.
+  the same tissue-expression table, generated with pandas from its CSV, and add
+  the README notes from `references/hpa-guide.md`. Then the same Reactome
+  pathway table, generated with pandas from its CSV, and the README notes
+  from `references/reactome-guide.md`.
 
 ## Reverse direction (GWAS trait or study → IMPC)
 
