@@ -60,6 +60,36 @@ flowchart LR
 ```
 
 
+# impc-string-ppi-enrichment workflow (experimental)
+
+```mermaid
+flowchart LR
+    Q[/"MP ids or labels"/]
+    OLS[("OLS")]
+    IDR[impc-data-retriever]
+    STR["string_ppi.py"]
+    MCP[("STRING MCP<br/>vs proteome")]
+    REST[("STRING REST<br/>vs IMPC-tested genes")]
+    OUT["Outputs<br/>CSV tables + README.md"]
+
+    Q --> OLS --> IDR --> STR
+    STR --> MCP --> OUT
+    STR --> REST --> OUT
+
+    %% shared palette (same in all diagrams), Okabe-Ito based, checked for protan/deutan/tritan
+    classDef source fill:#dc8cbb,stroke:#a0527c,color:#1a1a1a
+    classDef skill fill:#8ecdf0,stroke:#0072b2,color:#1a1a1a
+    classDef step fill:#ffffff,stroke:#525252,color:#1a1a1a
+    classDef output fill:#5cc4a3,stroke:#00664a,color:#1a1a1a
+    classDef input fill:#e5e5e5,stroke:#737373,color:#1a1a1a
+    class Q input
+    class OLS,MCP,REST source
+    class IDR skill
+    class STR step
+    class OUT output
+```
+
+
 # Data skills output
 
 ```mermaid
