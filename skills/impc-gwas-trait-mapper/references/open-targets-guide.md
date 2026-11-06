@@ -141,6 +141,21 @@ What the fields mean:
   `credibleSetConfidence` is one of the 31 L2G features (0.75 for an
   out-of-sample SuSiE set), so the L2G score already accounts for it.
 
+## Reverse entry (trait → studies)
+
+```graphql
+query($ids: [String!]!) {
+  studies(diseaseIds: $ids, enableIndirect: true, page: {index: 0, size: 200}) {
+    count rows { id studyType projectId traitFromSource diseases { id name } } } }
+```
+
+`enableIndirect: true` adds studies mapped to descendants of the id.
+MONDO_0005306 (ankylosing spondylitis) gave 41 studies (GCST and FinnGen),
+including pleiotropy studies that list it among several diseases.
+`scripts/ot_gene_to_gwas.py --disease-ids …` runs this and passes the GWAS
+study ids to the study → genes query below. Get the id from `search_entities`,
+not from memory.
+
 ## Reverse entry (study → genes)
 
 ```graphql

@@ -1,7 +1,7 @@
 ---
 name: impc-gwas-trait-mapper
 description: >-
-  Link IMPC mouse knockout phenotypes to human GWAS traits, in either direction. Given mouse or human genes or MP phenotypes, it resolves one-to-one orthologs, retrieves IMPC phenotypes, follows Open Targets locus-to-gene (L2G) evidence through credible sets to GWAS studies, resolves each study's EFO/MONDO/HP/OBA traits (Open Targets study index, GWAS Catalog MCP/API) and scores every mouse phenotype against every trait with OLS embedding similarity (MP vs EFO). Use it whenever a user mentions IMPC, mouse knockouts or MP terms together with GWAS, GWAS Catalog, human traits, credible sets, L2G, Open Targets genetics or EFO, or asks whether a mouse phenotype "translates", "matches", "is consistent with" or "supports" a human association, even if they never say "map". Also use it for the reverse question: which IMPC phenotypes or knockout genes support a GWAS trait or study.
+  Link IMPC mouse knockout phenotypes to human GWAS traits, in either direction. Given mouse or human genes, an MP phenotype, or a GWAS trait or study, it resolves one-to-one orthologs, retrieves IMPC phenotypes, follows Open Targets locus-to-gene (L2G) evidence through credible sets to GWAS studies, resolves each study's EFO/MONDO/HP/OBA traits from the Open Targets study index and scores every mouse phenotype against every trait with OLS embedding similarity (MP vs EFO). Use it whenever a user mentions IMPC, mouse knockouts or MP terms together with GWAS, GWAS Catalog, human traits, credible sets, L2G, Open Targets genetics or EFO, or asks whether a mouse phenotype "translates", "matches", "is consistent with" or "supports" a human association, even if they never say "map". Also use it for the reverse question: which IMPC phenotypes or knockout genes support a GWAS trait or study.
 ---
 
 # IMPC phenotypes ↔ GWAS traits
@@ -21,7 +21,7 @@ effort for the biology and the report.
 IMPC gene / phenotypes (MGI, MP)               impc-data-retriever skill
   → human one-to-one ortholog (HGNC)            impc-orthology MCP · scripts/orthologs.py
   → L2G evidence → credible set → GWAS study    Open Targets MCP · scripts/ot_gene_to_gwas.py
-  → study traits (EFO/MONDO/HP/OBA ids)         Open Targets study index · GWAS Catalog MCP/API
+  → study traits (EFO/MONDO/HP/OBA ids)         Open Targets study index (same script)
   → MP ↔ trait cosine similarity (0–1)          OLS MCP · scripts/ols_similarity.py
   → (on request) mouse disease models           phenodigm core · references/impc-model-search-strategy.md
 ```
@@ -46,7 +46,6 @@ statistical call on one side and the GWAS study accession on the other.
    | Open Targets | `query_open_targets_graphql`, `search_entities` | `scripts/ot_gene_to_gwas.py` (public GraphQL) |
    | `impc-orthology` `https://www.ebi.ac.uk/mi/impc/mcp/orthology/` | `find_orthologs_by_mgi_ids`, `find_orthologs_by_mouse_genes`, `find_orthologs_by_human_genes` | `scripts/orthologs.py` |
    | OLS `https://www.ebi.ac.uk/ols4/api/mcp` | `getClassSimilarity` (pair scores), `listEmbeddingModels` | `scripts/ols_similarity.py` |
-   | GWAS Catalog `https://www.ebi.ac.uk/gwas/mcp` | `gwascatalog_get_studies`, `gwascatalog_get_traits` | `scripts/gwas_catalog_traits.py` (REST v2) |
 
    Check which tools are actually loaded in this session. When a server is
    missing or times out, use the script and say so in the README; do not stall
@@ -55,16 +54,35 @@ statistical call on one side and the GWAS study accession on the other.
 
 ## Inputs this skill accepts
 
-- one or more mouse genes (symbol or MGI id) or human gene symbols, optionally
-  with a phenotype focus ("Mtor kidney phenotypes → GWAS" or
-  "human MTOR → IMPC and GWAS");
-- an MP term ("genes with decreased BUN → human traits");
-- the reverse: a GWAS trait, EFO/MONDO id or GCST study, asking which IMPC
-  phenotypes or knockouts support it.
+- **One or more genes** (mouse symbols or MGI ids, or human symbols),
+  optionally with a phenotype focus ("Mtor kidney phenotypes → GWAS",
+  "human MTOR → IMPC and GWAS").
+- **An MP term**, by id or label ("genes with decreased BUN → human traits"):
+  step 1 filters IMPC by that term, then steps 2–6 run for the genes it returns.
+- **The reverse:** a GWAS trait (EFO/MONDO/HP id or label) or a GCST study,
+  asking which IMPC phenotypes or knockouts support it (see "Reverse
+  direction").
 
-Ask only when the species is ambiguous (follow the gene-identifier rules in
-`impc-data-retriever`) or when "top genes" needs a ranking rule the user has
-not given. Otherwise choose a sensible default, state it, and proceed.
+Ask when the species is ambiguous (follow the gene-identifier rules in
+`impc-data-retriever`), when "top genes" needs a ranking rule the user has not
+given, and when an MP term or trait is given by label (next section).
+Otherwise choose a sensible default, state it, and proceed.
+
+### Confirm MP terms and traits given by label
+
+Labels are error-prone: near-identical labels carry different ids, and the
+top search hit is often not the term meant. A wrong id silently changes every
+downstream gene, study and score. So when an MP term or trait is given by
+label, search OLS, show the top candidates as a table and ask the user which
+id to use before step 1 (MP term) or the reverse search (trait). Wait for the
+answer. `references/term-confirmation-guide.md` has the search, the cleaning
+rules, the table and examples.
+
+When the user gives an id, look it up once to show its label and check it is
+not obsolete; ask only if it is obsolete or its label does not fit what the
+user wrote. A GCST study id needs no confirmation. Never type an id from
+memory. If the confirmed term returns no IMPC rows or no studies, follow the
+stopping rules; do not switch to a parent or child term without asking.
 
 ## Workflow
 
@@ -96,9 +114,9 @@ top-level MP fields: nothing downstream uses them.
 Write `01_impc_phenotypes.csv`. Keep `mp_term_id` and `mp_term_name` even when
 the user asked only about genes: they are the left side of the similarity step.
 
-For many genes, do not use `batch_solr_request` list mode
-(`field_list`/`field_type`) with `MGI:` ids: the helper does not quote the
-values, Solr reads `MGI` as a field name and returns HTTP 400
+For many genes, do not use
+`batch_solr_request` list mode (`field_list`/`field_type`) with `MGI:` ids:
+the helper does not quote the values, Solr reads `MGI` as a field name and returns HTTP 400
 `undefined field MGI`. Build a quoted grouped query instead, in chunks of
 ~50: `marker_accession_id:("MGI:1928394" OR "MGI:1347521" ...)`.
 
@@ -167,34 +185,18 @@ Interpretation rules that belong in the report:
   Catalog's curated per-association beta/OR is not joined: it covers only the
   reported top hits and its rsIDs are often not the Open Targets lead variants.
 
-### 4. Trait ids: GWAS Catalog, always, and compare with Open Targets
+### 4. Trait ids (Open Targets study index)
 
-Step 3 yields mapped trait ids from the Open Targets study index. The GWAS
-Catalog is the primary source for `GCST` studies, so fetch its mapping for
-every study and compare the two (`references/gwas-catalog-guide.md`). MCP
-(`gwascatalog_get_studies`) if connected, otherwise:
+`04_gwas_traits.csv` from step 3 is the trait table: one row per study ×
+ontology id that the Open Targets study index assigns, with
+`trait_source = open_targets_study.diseases`. The GWAS Catalog cross-check
+that used to run here is archived (`archive/impc-gwas-trait-mapper/gwas-catalog/`);
+do not call the GWAS Catalog for trait ids. FinnGen studies keep their Open
+Targets ids and are labelled as not in the GWAS Catalog.
 
-```bash
-uv run skills/impc-gwas-trait-mapper/scripts/gwas_catalog_traits.py \
-  --from-csv 03_l2g_gwas_links.csv --id-col gwas_study_id \
-  --compare-ot 04_gwas_traits.csv --out 04_gwas_catalog_traits.csv
-```
-
-`--compare-ot` writes `04_gwas_catalog_traits_vs_open_targets.csv`, one row per
-study with status `agree` / `catalog_extra` / `ot_extra` / `differ` /
-`not_in_catalog`, and prints every disagreement. On 86 test studies: 80 agreed,
-one had a Catalog-only extra trait (`EFO_0000493 family history` on a UKB
-sibling-history study), five were FinnGen and not in the Catalog. Treat each
-non-`agree` study as something to tell the user: list it in the synthesis and
-in the README limitations with both id sets. Build the trait table for step 5
-as the **union** of both sources, tagging `trait_source` per row
-(`open_targets_study.diseases`, `gwas_catalog`), so a similarity hit can be
-traced to whichever service supplied the id. FinnGen studies keep their Open
-Targets ids and the `not_in_catalog` flag.
-
-Score only the ontology terms the two services assign to each study. Some of
+Score only the ontology terms Open Targets assigns to each study. Some of
 those mappings are coarse at the source (UKB "Impedance of arm" studies map to
-`HP_0000924 Abnormality of the skeletal system` in both services): keep
+`HP_0000924 Abnormality of the skeletal system`): keep
 `trait_from_source` in the trait table so the reader can see it, and mention
 such cases in the README, but do not substitute or add terms of your own. Never
 type an ontology id from memory.
@@ -396,10 +398,15 @@ In the result directory:
 
 Same scripts, opposite order:
 
-1. trait → studies: `gwas_catalog_traits.py --efo MONDO_0005306 --child-traits`
-   (resolves stale EFO ids first; obsolete ids return 0 rows silently otherwise);
-2. studies → L2G genes: `ot_gene_to_gwas.py --study-ids GCST… --out-links …`,
-   then filter to rank-1 or L2G ≥ 0.5 genes (two studies gave 562 gene rows);
+1. trait → studies → L2G genes: confirm the trait id first (see "Confirm MP
+   terms and traits given by label"), then
+   `ot_gene_to_gwas.py --disease-ids MONDO_0005306 --out-links … --out-traits …`.
+   It takes the GWAS studies Open Targets maps to that id or its descendants
+   (`studies(diseaseIds:, enableIndirect: true)`; ankylosing spondylitis: 41
+   studies, 555 credible sets, 1,194 L2G gene rows) and includes pleiotropy
+   studies that list the trait among several, so say which those are. For a
+   known study use `--study-ids GCST…` instead;
+2. filter to rank-1 or L2G ≥ 0.5 genes;
 3. human genes → mouse: `find_orthologs_by_human_genes` (MCP) or
    `orthologs.py --from-csv <links> --id-col human_symbol --human`;
 4. mouse genes → `genotype-phenotype` rows, same fields as step 1, with a

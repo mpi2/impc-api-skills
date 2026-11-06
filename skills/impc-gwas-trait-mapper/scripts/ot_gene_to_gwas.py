@@ -8,12 +8,14 @@ Path (tested 2026-09-22 against API v4):
      evidence.score is the gene's L2G score; credibleSet.study carries the GWAS study and its mapped trait ids.
 
 Reverse entry point (--study-ids): credibleSets(studyIds) -> l2GPredictions -> candidate genes.
+--disease-ids first finds the GWAS studies mapped to those EFO/MONDO ids (descendants included) with studies(diseaseIds).
 
 Examples:
   uv run skills/impc-gwas-trait-mapper/scripts/ot_gene_to_gwas.py --orthologs 02_orthologs.csv \
       --out-evidence 03_ot_l2g_evidence.csv --out-links 03_l2g_gwas_links.csv --out-traits 04_gwas_traits.csv
   uv run skills/impc-gwas-trait-mapper/scripts/ot_gene_to_gwas.py --ensembl ENSG00000198793 --out-links links.csv
   uv run skills/impc-gwas-trait-mapper/scripts/ot_gene_to_gwas.py --study-ids GCST90480502 GCST90014463 --out-links study_l2g_genes.csv
+  uv run skills/impc-gwas-trait-mapper/scripts/ot_gene_to_gwas.py --disease-ids MONDO_0005306 --out-links as_l2g_genes.csv
 """
 from __future__ import annotations
 
@@ -48,6 +50,9 @@ Q_STUDY_CS = """query($ids:[String!]!,$i:Int!){ credibleSets(studyIds:$ids, stud
     variant{ id rsIds referenceAllele alternateAllele mostSevereConsequence{ label } }
     l2GPredictions(page:{index:0,size:%d}){ count rows{ score target{ id approvedSymbol } } }
     study{ id projectId traitFromSource diseases{ id name } pubmedId publicationFirstAuthor publicationDate nSamples nCases } } } }"""
+
+Q_DISEASE_STUDIES = """query($ids:[String!]!,$i:Int!){ studies(diseaseIds:$ids, enableIndirect:true, page:{index:$i,size:200}){ count rows{
+    id studyType projectId traitFromSource } } }"""
 
 EVIDENCE_FIELDS = ["human_symbol", "hgnc_id", "ensembl_id", "l2g_score", "l2g_rank_in_locus", "n_l2g_genes_in_locus", "top_l2g_gene_in_locus",
                    "top_l2g_score_in_locus", "study_locus_id", "lead_variant", "rsids", "chromosome", "position", "p_value",
@@ -171,6 +176,19 @@ def gene_to_evidence(symbol: str, ensembl: str, l2g_size: int, hgnc_id: str = ""
     return rows
 
 
+def diseases_to_studies(disease_ids: list[str]) -> list[str]:
+    """GWAS study ids mapped to these EFO/MONDO ids or their descendants (Open Targets study index)."""
+    ids, i = [], 0
+    while True:
+        page = gql(Q_DISEASE_STUDIES, {"ids": disease_ids, "i": i})["studies"]
+        ids.extend(r["id"] for r in page["rows"] if r.get("studyType") == "gwas")
+        i += 1
+        if not page["rows"] or i * 200 >= page["count"]:
+            break
+    print(f"{len(disease_ids)} disease ids (with descendants): {page['count']} studies, {len(ids)} GWAS", file=sys.stderr)
+    return ids
+
+
 def studies_to_genes(study_ids: list[str], l2g_size: int) -> list[dict]:
     rows, i = [], 0
     while True:
@@ -221,6 +239,7 @@ def main() -> int:
     g.add_argument("--hgnc", nargs="+", help="HGNC ids (HGNC:12440 ...), mapped to Ensembl ids with mapIds")
     g.add_argument("--ensembl", nargs="+", help="Ensembl gene ids, used as given")
     g.add_argument("--study-ids", nargs="+", help="Reverse direction: GWAS study ids -> credible sets -> L2G genes")
+    g.add_argument("--disease-ids", nargs="+", help="Reverse direction: EFO/MONDO ids (descendants included) -> GWAS studies -> as --study-ids")
     ap.add_argument("--hgnc-col", default="hgncAccId")
     ap.add_argument("--l2g-size", type=int, default=5, help="L2G candidates fetched per credible set (rows sorted by score desc)")
     ap.add_argument("--out-evidence", help="All evidence rows (one per credible set x disease)")
@@ -228,6 +247,11 @@ def main() -> int:
     ap.add_argument("--out-traits", help="One row per study x mapped trait id, ready for ols_similarity.py")
     args = ap.parse_args()
 
+    if args.disease_ids:
+        args.study_ids = diseases_to_studies(args.disease_ids)
+        if not args.study_ids:
+            print("no GWAS studies for these disease ids; check them with search_entities", file=sys.stderr)
+            return 1
     if args.study_ids:
         rows = studies_to_genes(args.study_ids, args.l2g_size)
         links = rows
@@ -271,7 +295,7 @@ def main() -> int:
                                    "trait_label": d["name"], "trait_from_source": st.get("traitFromSource", ""), "trait_source": "open_targets_study.diseases"})
             if not st.get("diseases"):
                 traits.append({"gwas_study_id": st.get("id", ""), "gwas_source": st.get("projectId", ""), "trait_id": "", "trait_label": "",
-                               "trait_from_source": st.get("traitFromSource", ""), "trait_source": "unmapped: resolve label via OLS or GWAS Catalog"})
+                               "trait_from_source": st.get("traitFromSource", ""), "trait_source": "unmapped: resolve label via OLS"})
         write_csv(args.out_traits, traits, TRAIT_FIELDS)
     return 0
 
