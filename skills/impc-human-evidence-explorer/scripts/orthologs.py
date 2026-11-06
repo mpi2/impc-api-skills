@@ -6,9 +6,9 @@ agent's client, or for batches (max 600 ids per call). Same data as the
 `find_orthologs_by_mgi_ids` / `find_orthologs_by_mouse_genes` tools.
 
 Example:
-  uv run skills/impc-gwas-trait-mapper/scripts/orthologs.py --mgi MGI:1928394 MGI:1347521 --out 02_orthologs.csv
-  uv run skills/impc-gwas-trait-mapper/scripts/orthologs.py --symbols Mtor Ror2 Dvl3 --out 02_orthologs.csv
-  uv run skills/impc-gwas-trait-mapper/scripts/orthologs.py --from-csv 01_impc_phenotypes.csv --id-col marker_accession_id --out 02_orthologs.csv
+  uv run skills/impc-human-evidence-explorer/scripts/orthologs.py --mgi MGI:1928394 MGI:1347521 --out 02_orthologs.csv
+  uv run skills/impc-human-evidence-explorer/scripts/orthologs.py --symbols Mtor Ror2 Dvl3 --out 02_orthologs.csv
+  uv run skills/impc-human-evidence-explorer/scripts/orthologs.py --from-csv 01_impc_phenotypes.csv --id-col marker_accession_id --out 02_orthologs.csv
 """
 from __future__ import annotations
 

@@ -28,8 +28,8 @@ then stable id. The rank says how central the gene is to the pathway, not how re
 to any phenotype or trait. A gene with no pathways gets one row with note "no Reactome annotation".
 
 Examples:
-  uv run skills/impc-gwas-trait-mapper/scripts/reactome_pathways.py --from-csv 02_orthologs.csv --id-col hgncAccId --symbol-col humanGeneSymbol --out 02_reactome_pathways.csv
-  uv run skills/impc-gwas-trait-mapper/scripts/reactome_pathways.py --genes HGNC:6547 HGNC:12440 --out reactome.csv
+  uv run skills/impc-human-evidence-explorer/scripts/reactome_pathways.py --from-csv 02_orthologs.csv --id-col hgncAccId --symbol-col humanGeneSymbol --out 02_reactome_pathways.csv
+  uv run skills/impc-human-evidence-explorer/scripts/reactome_pathways.py --genes HGNC:6547 HGNC:12440 --out reactome.csv
 """
 from __future__ import annotations
 
@@ -50,7 +50,7 @@ HUMAN = "9606"
 DISEASE = "Disease"
 # Reactome answers HTTP 403 to Python's default User-Agent, and 406 to Accept: application/json on
 # text endpoints such as /data/database/version.
-USER_AGENT = "impc-gwas-trait-mapper/0.1 (IMPC skills)"
+USER_AGENT = "impc-human-evidence-explorer/0.1 (IMPC skills)"
 PAGE_SIZE = 500
 FIELDS = ["human_symbol", "hgnc_id", "queried_id", "rank", "stable_id", "pathway_name", "top_level_category",
           "reactions_with_gene", "reactions_total", "reaction_coverage", "pathway_entities", "in_disease",

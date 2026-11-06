@@ -21,7 +21,7 @@ column; use --model to keep one. An empty similarity file (no pair passed the st
 similarity is left blank and the main table keeps rows on the L2G rank rule alone.
 
 Example:
-  uv run skills/impc-gwas-trait-mapper/scripts/join_gene_trait.py --phenotypes 01_impc_phenotypes.csv \
+  uv run skills/impc-human-evidence-explorer/scripts/join_gene_trait.py --phenotypes 01_impc_phenotypes.csv \
     --orthologs 02_orthologs.csv --links 03_l2g_gwas_links.csv --traits 04_gwas_traits.csv \
     --similarity 05_phenotype_trait_similarity.csv \
     --out 06_impc_gene_to_gwas_trait.csv --detail-out 06_detail_impc_call_x_credible_set.csv

@@ -4,7 +4,7 @@
 flowchart LR
     Q[/"Query: matching trait–phenotypes for gene X"/]
 
-    subgraph Skill["impc-gwas-trait-mapper"]
+    subgraph Skill["impc-human-evidence-explorer"]
         direction LR
         subgraph P1["1. Get IMPC gene phenotypes"]
             direction TB
@@ -73,7 +73,7 @@ flowchart LR
 \* Script listed under the MCP is a fallback; the skill uses whichever is available.
 
 The GWAS Catalog trait cross-check (former step 4) is archived in
-`archive/impc-gwas-trait-mapper/gwas-catalog/`; trait ids come from the Open Targets study index only.
+`archive/impc-human-evidence-explorer/gwas-catalog/`; trait ids come from the Open Targets study index only.
 
 
 ## Optional step 7: disease/model identification
@@ -84,7 +84,7 @@ trait(s). The search recipe lives in
 
 ```mermaid
 flowchart LR
-    subgraph Skill2["impc-gwas-trait-mapper"]
+    subgraph Skill2["impc-human-evidence-explorer"]
         direction LR
         subgraph P16["1–6. IMPC phenotypes → orthologs → OT L2G → similarity → join"]
             direction TB

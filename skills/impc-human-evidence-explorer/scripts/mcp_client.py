@@ -21,7 +21,7 @@ class McpClient:
         self._post({
             "jsonrpc": "2.0", "id": self._next(), "method": "initialize",
             "params": {"protocolVersion": protocol, "capabilities": {},
-                       "clientInfo": {"name": "impc-gwas-trait-mapper", "version": "0.1"}},
+                       "clientInfo": {"name": "impc-human-evidence-explorer", "version": "0.1"}},
         })
         try:
             self._post({"jsonrpc": "2.0", "method": "notifications/initialized"})

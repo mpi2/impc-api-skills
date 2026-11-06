@@ -11,11 +11,11 @@ Reverse entry point (--study-ids): credibleSets(studyIds) -> l2GPredictions -> c
 --disease-ids first finds the GWAS studies mapped to those EFO/MONDO ids (descendants included) with studies(diseaseIds).
 
 Examples:
-  uv run skills/impc-gwas-trait-mapper/scripts/ot_gene_to_gwas.py --orthologs 02_orthologs.csv \
+  uv run skills/impc-human-evidence-explorer/scripts/ot_gene_to_gwas.py --orthologs 02_orthologs.csv \
       --out-evidence 03_ot_l2g_evidence.csv --out-links 03_l2g_gwas_links.csv --out-traits 04_gwas_traits.csv
-  uv run skills/impc-gwas-trait-mapper/scripts/ot_gene_to_gwas.py --ensembl ENSG00000198793 --out-links links.csv
-  uv run skills/impc-gwas-trait-mapper/scripts/ot_gene_to_gwas.py --study-ids GCST90480502 GCST90014463 --out-links study_l2g_genes.csv
-  uv run skills/impc-gwas-trait-mapper/scripts/ot_gene_to_gwas.py --disease-ids MONDO_0005306 --out-links as_l2g_genes.csv
+  uv run skills/impc-human-evidence-explorer/scripts/ot_gene_to_gwas.py --ensembl ENSG00000198793 --out-links links.csv
+  uv run skills/impc-human-evidence-explorer/scripts/ot_gene_to_gwas.py --study-ids GCST90480502 GCST90014463 --out-links study_l2g_genes.csv
+  uv run skills/impc-human-evidence-explorer/scripts/ot_gene_to_gwas.py --disease-ids MONDO_0005306 --out-links as_l2g_genes.csv
 """
 from __future__ import annotations
 

@@ -18,8 +18,8 @@ Symbols are matched exactly on HPA "Gene" or "Ensembl" (the search itself is fuz
 a query with no unique exact hit gets a row with a note and is named on stderr.
 
 Examples:
-  uv run skills/impc-gwas-trait-mapper/scripts/hpa_tissue_expression.py --from-csv 02_orthologs.csv --id-col humanGeneSymbol --out 02_hpa_tissue_expression.csv
-  uv run skills/impc-gwas-trait-mapper/scripts/hpa_tissue_expression.py --genes PNPT1 ENSG00000163631 --out hpa.csv --tissues-out hpa_tissues.csv
+  uv run skills/impc-human-evidence-explorer/scripts/hpa_tissue_expression.py --from-csv 02_orthologs.csv --id-col humanGeneSymbol --out 02_hpa_tissue_expression.csv
+  uv run skills/impc-human-evidence-explorer/scripts/hpa_tissue_expression.py --genes PNPT1 ENSG00000163631 --out hpa.csv --tissues-out hpa_tissues.csv
 """
 from __future__ import annotations
 

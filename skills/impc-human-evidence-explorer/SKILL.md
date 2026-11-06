@@ -1,5 +1,5 @@
 ---
-name: impc-gwas-trait-mapper
+name: impc-human-evidence-explorer
 description: >-
   Link IMPC mouse knockout phenotypes to human GWAS traits, in either direction. Given mouse or human genes, an MP phenotype, or a GWAS trait or study, it resolves one-to-one orthologs, retrieves IMPC phenotypes, follows Open Targets locus-to-gene (L2G) evidence through credible sets to GWAS studies, resolves each study's EFO/MONDO/HP/OBA traits from the Open Targets study index and scores every mouse phenotype against every trait with OLS embedding similarity (MP vs EFO). Each human ortholog also gets Human Protein Atlas tissue expression and its Reactome pathways as gene-level context. Use it whenever a user mentions IMPC, mouse knockouts or MP terms together with GWAS, GWAS Catalog, human traits, credible sets, L2G, Open Targets genetics or EFO, or asks whether a mouse phenotype "translates", "matches", "is consistent with" or "supports" a human association, even if they never say "map". Also use it for the reverse question: which IMPC phenotypes or knockout genes support a GWAS trait or study.
 ---
@@ -134,7 +134,7 @@ Use one-to-one orthologs only. A one-to-many family would spread one GWAS
 locus over several mouse genes and make the final table unreadable.
 
 - MCP: `find_orthologs_by_mgi_ids` (ids are stable; symbols drift). Max 600 per call.
-- Script: `uv run skills/impc-gwas-trait-mapper/scripts/orthologs.py --from-csv 01_impc_phenotypes.csv --id-col marker_accession_id --out 02_orthologs.csv`
+- Script: `uv run skills/impc-human-evidence-explorer/scripts/orthologs.py --from-csv 01_impc_phenotypes.csv --id-col marker_accession_id --out 02_orthologs.csv`
 
 Keep `mgiGeneAccId, mouseGeneSymbol, hgncAccId, humanGeneSymbol, supportCount`.
 Genes with no one-to-one ortholog stop here; list them under limitations
@@ -154,7 +154,7 @@ tissues and cell types, and the top tissues by nTPM. Read
 `references/hpa-guide.md` for the fields, API quirks and report table. Then:
 
 ```bash
-uv run skills/impc-gwas-trait-mapper/scripts/hpa_tissue_expression.py \
+uv run skills/impc-human-evidence-explorer/scripts/hpa_tissue_expression.py \
   --from-csv 02_orthologs.csv --id-col humanGeneSymbol --out 02_hpa_tissue_expression.csv
 ```
 
@@ -173,7 +173,7 @@ Reactome is queried by accession (release 98 resolves no HGNC ids). Read
 report table. Then:
 
 ```bash
-uv run skills/impc-gwas-trait-mapper/scripts/reactome_pathways.py \
+uv run skills/impc-human-evidence-explorer/scripts/reactome_pathways.py \
   --from-csv 02_orthologs.csv --id-col hgncAccId --symbol-col humanGeneSymbol --out 02_reactome_pathways.csv
 ```
 
@@ -190,7 +190,7 @@ or trait. The reader judges that.
 Read `references/open-targets-guide.md` before writing any GraphQL. Then:
 
 ```bash
-uv run skills/impc-gwas-trait-mapper/scripts/ot_gene_to_gwas.py --orthologs 02_orthologs.csv \
+uv run skills/impc-human-evidence-explorer/scripts/ot_gene_to_gwas.py --orthologs 02_orthologs.csv \
   --out-evidence 03_ot_l2g_evidence.csv --out-links 03_l2g_gwas_links.csv --out-traits 04_gwas_traits.csv
 ```
 
@@ -243,7 +243,7 @@ Interpretation rules that belong in the report:
 `04_gwas_traits.csv` from step 3 is the trait table: one row per study ×
 ontology id that the Open Targets study index assigns, with
 `trait_source = open_targets_study.diseases`. The GWAS Catalog cross-check
-that used to run here is archived (`archive/impc-gwas-trait-mapper/gwas-catalog/`);
+that used to run here is archived (`archive/impc-human-evidence-explorer/gwas-catalog/`);
 do not call the GWAS Catalog for trait ids. FinnGen studies keep their Open
 Targets ids and are labelled as not in the GWAS Catalog.
 
@@ -260,7 +260,7 @@ Read `references/ols-similarity-guide.md` for the tool inventory, IRI forms and
 what the score does and does not mean. Then:
 
 ```bash
-uv run skills/impc-gwas-trait-mapper/scripts/ols_similarity.py \
+uv run skills/impc-human-evidence-explorer/scripts/ols_similarity.py \
   --phenotypes 01_impc_phenotypes.csv --phenotype-id-col mp_term_id --phenotype-label-col mp_term_name \
   --traits 04_gwas_traits.csv --trait-id-col trait_id --trait-label-col trait_label \
   --out 05_phenotype_trait_similarity.csv
@@ -348,7 +348,7 @@ credible sets where the gene ranks top-3 by L2G, and say which filter you used.
 ### 6. Join and rank
 
 ```bash
-uv run skills/impc-gwas-trait-mapper/scripts/join_gene_trait.py --phenotypes 01_impc_phenotypes.csv \
+uv run skills/impc-human-evidence-explorer/scripts/join_gene_trait.py --phenotypes 01_impc_phenotypes.csv \
   --orthologs 02_orthologs.csv --links 03_l2g_gwas_links.csv --traits 04_gwas_traits.csv \
   --similarity 05_phenotype_trait_similarity.csv \
   --out 06_impc_gene_to_gwas_trait.csv --detail-out 06_detail_impc_call_x_credible_set.csv

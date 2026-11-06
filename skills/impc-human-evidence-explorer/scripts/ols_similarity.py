@@ -16,7 +16,7 @@ Default mode (--top-k 20): nearest neighbours in each ontology, then join.
   (the earlier behaviour; no neighbourhood filter).
 
 Example:
-  uv run skills/impc-gwas-trait-mapper/scripts/ols_similarity.py \
+  uv run skills/impc-human-evidence-explorer/scripts/ols_similarity.py \
       --phenotypes 01_impc_phenotypes.csv --phenotype-id-col mp_term_id --phenotype-label-col mp_term_name \
       --traits 04_gwas_traits.csv --trait-id-col trait_id --trait-label-col trait_label \
       --out 05_phenotype_trait_similarity.csv
