@@ -60,6 +60,41 @@ flowchart LR
 ```
 
 
+# impc-uniprot-mapper workflow (experimental)
+
+```mermaid
+flowchart LR
+    Q[/"MGI ids, IMPC CSV<br/>or gene set description"/]
+    IDR[impc-data-retriever]
+    FTP[("UniProt mouse<br/>idmapping file")]
+    BUILD["uniprot_idmap.py build<br/>refresh / rebuild"]
+    CACHE[("Local mapping<br/>+ metadata + download history")]
+    MAP["uniprot_idmap.py map<br/>reviewed first"]
+    ASK{"Genes with no<br/>reviewed hit?"}
+    OUT["Outputs<br/>CSV + README.md"]
+
+    Q --> MAP
+    Q -. "genes from IMPC" .-> IDR --> MAP
+    FTP --> BUILD --> CACHE --> MAP --> ASK
+    ASK -- No --> OUT
+    ASK -- "Yes: ask user" --> MAP
+
+    %% shared palette (same in all diagrams), Okabe-Ito based, checked for protan/deutan/tritan
+    classDef source fill:#dc8cbb,stroke:#a0527c,color:#1a1a1a
+    classDef skill fill:#8ecdf0,stroke:#0072b2,color:#1a1a1a
+    classDef decision fill:#f5ec85,stroke:#8a7f00,color:#1a1a1a
+    classDef step fill:#ffffff,stroke:#525252,color:#1a1a1a
+    classDef output fill:#5cc4a3,stroke:#00664a,color:#1a1a1a
+    classDef input fill:#e5e5e5,stroke:#737373,color:#1a1a1a
+    class Q input
+    class FTP,CACHE source
+    class IDR skill
+    class ASK decision
+    class BUILD,MAP step
+    class OUT output
+```
+
+
 # Data skills output
 
 ```mermaid
