@@ -1,5 +1,7 @@
 ---
 name: uv
+metadata:
+  version: "1.0.0"
 description: >-
   Checks whether the uv Python package manager is installed and installs it if
   missing. Ensures uv is on PATH. Use when another skill requires uv as a
@@ -7,6 +9,7 @@ description: >-
 ---
 
 # uv (Python Package Manager)
+
 
 `uv` is a fast Python package manager used by Science Skills to run their Python
 CLI scripts. Many skills depend on `uv` being installed and on

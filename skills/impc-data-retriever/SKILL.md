@@ -1,5 +1,7 @@
 ---
 name: impc-data-retriever
+metadata:
+  version: "1.0.0"
 description: "You MUST use this when the user requests data retrieval from the IMPC."
 ---
 

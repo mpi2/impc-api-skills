@@ -1,5 +1,7 @@
 ---
 name: get-es-cell-coordinates
+metadata:
+  version: "1.0.0"
 description: Retrieve an IMPC ES-cell or corresponding targeting-vector GenBank file and extract its 5′ and 3′ homology-arm coordinates to report the predicted construct interval between their inner boundaries. Use for ES-cell coordinate requests that provide an MGI gene ID and allele name, an IMPC allele-page URL, or a GenBank file/URL.
 ---
 
@@ -137,6 +139,7 @@ is complete, partial, empty, or failed.>
 
 ## Provenance
 
+- Skill: `get-es-cell-coordinates <metadata.version from the installed SKILL.md used for this run>`
 - Generated: `<UTC ISO-8601 timestamp>`
 - uv: `<version>`
 - Python: `<version>`
