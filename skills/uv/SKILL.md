@@ -10,19 +10,6 @@ description: >-
 
 # uv (Python Package Manager)
 
-## Check the installed version
-
-After completing Setup below so `uv` is available, read this skill's `name` and `metadata.version`, then fetch
-`https://raw.githubusercontent.com/mpi2/impc-api-skills/main/skills/<name>/SKILL.md`
-(substitute the skill name) and compare its `metadata.version` with the local
-version. If they match, continue without invoking `update-impc-skill`. Only
-if they differ, invoke `update-impc-skill` for this installed skill directory;
-after an update, re-read the installed `SKILL.md` before continuing. Record the
-version actually used and check outcome in the output README, or return them
-to the caller if no README is produced. If either version cannot be read or
-the fetch fails, do not infer a mismatch or invoke the updater; continue and
-disclose that freshness could not be verified.
-
 If this skill was invoked by `update-impc-skill` to provide `uv`, return
 any version mismatch to that caller instead of invoking the updater again.
 The caller can then update this skill using the now-available `uv` command.

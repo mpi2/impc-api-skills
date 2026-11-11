@@ -10,18 +10,6 @@ description: Retrieve an IMPC ES-cell or corresponding targeting-vector GenBank 
 Return the interval `x2..y1`, where the GenBank feature annotated `5 arm`
 is `x1..x2` and the feature annotated `3 arm` is `y1..y2`.
 
-## Check the installed version
-
-Before running, read this skill's `name` and `metadata.version`, then fetch
-`https://raw.githubusercontent.com/mpi2/impc-api-skills/main/skills/<name>/SKILL.md`
-(substitute the skill name) and compare its `metadata.version` with the local
-version. If they match, continue without invoking `update-impc-skill`. Only
-if they differ, invoke `update-impc-skill` for this installed skill directory;
-after an update, re-read the installed `SKILL.md` before continuing. Record the
-version actually used and check outcome in the output README. If either
-version cannot be read or the fetch fails, do not infer a mismatch or invoke
-the updater; continue and disclose that freshness could not be verified.
-
 ## Prerequisites
 
 - `uv` must be installed and available on `PATH`; verify with `uv --version`.

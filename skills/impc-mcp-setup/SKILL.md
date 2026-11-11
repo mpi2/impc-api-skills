@@ -7,19 +7,6 @@ description: Configure and verify one or more hosted IMPC MCP servers in the cur
 
 # IMPC MCP Server Setup
 
-## Check the installed version
-
-Before running, read this skill's `name` and `metadata.version`, then fetch
-`https://raw.githubusercontent.com/mpi2/impc-api-skills/main/skills/<name>/SKILL.md`
-(substitute the skill name) and compare its `metadata.version` with the local
-version. If they match, continue without invoking `update-impc-skill`. Only
-if they differ, invoke `update-impc-skill` for this installed skill directory;
-after an update, re-read the installed `SKILL.md` before continuing. Record the
-version actually used and check outcome in the output README, or return them
-to the caller if no README is produced. If either version cannot be read or
-the fetch fails, do not infer a mismatch or invoke the updater; continue and
-disclose that freshness could not be verified.
-
 ## What this actually is
 
 The IMPC hosts four MCP servers at EBI. They are already running, they are public, and they need no authentication or local install. "Setting up the IMPC MCP servers" means adding their endpoints through the target client's native MCP configuration mechanism, then confirming that the client loaded the tools.
