@@ -1,0 +1,7 @@
+The attribution step and the rule against filling gaps from model knowledge
+were informed by ideas in the uniprot_database skill of
+https://github.com/google-deepmind/science-skills (Copyright 2026 Google LLC).
+No text or code was copied from it; this skill is written independently.
+
+The mapping is built from UniProt data, which UniProt licenses under
+CC BY 4.0: https://www.uniprot.org/help/license
