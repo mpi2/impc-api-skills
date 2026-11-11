@@ -14,7 +14,9 @@ UniProt's REST API is unreliable and rate-limited, so gene lists of any size
 stall on it. UniProt also publishes every mouse cross-reference as one file.
 This skill turns that file into a small local mapping once, and lookups then
 take under a second with no network. Do not fall back to REST when a lookup or
-download fails: report the failure instead.
+download fails: report the failure instead. For the same reason, never fill a
+blank accession from memory or another source. Every accession in the output
+must come from the mapping, so the result traces to one UniProt release.
 
 ```
 MGI ids, IMPC CSV, or gene set        impc-data-retriever when genes must come from IMPC
@@ -109,6 +111,19 @@ last-modified date, retrieval date, checksums). That block is what ties a result
 to a specific download. Leave local cache paths out of the report.
 
 Show the user the status counts, the policy used and the UniProt release.
+
+### Attribution
+
+UniProt data are licensed under CC BY 4.0, which requires credit wherever they
+are reused, and users often share these CSVs. So in the README and in the first
+answer of a conversation that shows UniProt data, state that the accessions come
+from UniProt, give the release and the license from the summary's `source`
+block, and point to UniProt's citation guidance at
+https://www.uniprot.org/help/publications. At the time of writing that is
+The UniProt Consortium, "UniProt: the Universal Protein Knowledgebase in 2025",
+*Nucleic Acids Research* 53(D1):D609–D617 (2025), doi:10.1093/nar/gkae1010.
+If `license` is null, the mapping predates license recording: run `rebuild`, or
+cite the license as given at https://www.uniprot.org/help/license.
 
 ## Output columns
 

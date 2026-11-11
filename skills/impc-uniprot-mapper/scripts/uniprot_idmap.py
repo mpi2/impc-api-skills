@@ -70,18 +70,24 @@ def http_get(url: str, headers: dict[str, str] | None = None):
     return urlopen(request, timeout=TIMEOUT_SECONDS)
 
 
-def fetch_release() -> dict[str, str | None]:
-    """Return the UniProt release and the published md5. Both are best effort."""
+def fetch_release() -> dict:
+    """Return the UniProt release, data license and published md5. All are best effort."""
     try:
         with http_get(METALINK_URL) as response:
             root = ElementTree.fromstring(response.read())
     except (OSError, HTTPException, ElementTree.ParseError):
-        return {"version": None, "md5": None}
+        return {"version": None, "md5": None, "license": None}
     md5 = None
     for entry in root.iterfind("m:files/m:file", METALINK_NS):
         if entry.get("name") == SOURCE_FILE:
             md5 = entry.findtext("m:verification/m:hash[@type='md5']", namespaces=METALINK_NS)
-    return {"version": root.findtext("m:version", namespaces=METALINK_NS), "md5": md5}
+    license_name = root.findtext("m:license/m:name", namespaces=METALINK_NS)
+    license_url = root.findtext("m:license/m:url", namespaces=METALINK_NS)
+    return {
+        "version": root.findtext("m:version", namespaces=METALINK_NS),
+        "md5": md5,
+        "license": {"name": license_name, "url": license_url} if license_name else None,
+    }
 
 
 def download(destination: Path, etag: str | None) -> dict | None:
@@ -238,6 +244,7 @@ def update_cache(cache: Path, action: str) -> int:
                     "size_bytes": source["size_bytes"],
                     "sha256": source["sha256"],
                     "md5_verified_against_uniprot": release["md5"] is not None,
+                    "license": release["license"],
                 },
                 "mapping": {"file": MAPPING_NAME, "sha256": mapping_sha256, **counts},
             }
@@ -388,6 +395,8 @@ def map_ids(args: argparse.Namespace) -> int:
             "retrieved_at": metadata["retrieved_at"],
             "source_sha256": metadata["source"]["sha256"],
             "mapping_sha256": metadata["mapping"]["sha256"],
+            # Absent from mappings built before the license was recorded; rebuild to add it.
+            "license": metadata["source"].get("license"),
         },
     }
     print(json.dumps(summary, indent=2), file=sys.stderr)
