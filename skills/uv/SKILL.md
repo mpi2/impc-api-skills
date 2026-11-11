@@ -10,10 +10,6 @@ description: >-
 
 # uv (Python Package Manager)
 
-If this skill was invoked by `update-impc-skill` to provide `uv`, return
-any version mismatch to that caller instead of invoking the updater again.
-The caller can then update this skill using the now-available `uv` command.
-This check concerns the skill version, not the `uv` executable version.
 
 `uv` is a fast Python package manager used by Science Skills to run their Python
 CLI scripts. Many skills depend on `uv` being installed and on
