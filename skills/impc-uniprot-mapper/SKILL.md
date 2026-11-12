@@ -6,7 +6,8 @@ description: >-
 
 # IMPC genes → UniProt accessions
 
-**Experimental:** the output format may change and there are no evals yet.
+**Experimental:** there are no evals yet. The output of `map` is frozen, see
+[Output contract](#output-contract-schema-1), so other skills can build on it.
 
 ## Why this skill exists
 
@@ -125,7 +126,22 @@ The UniProt Consortium, "UniProt: the Universal Protein Knowledgebase in 2025",
 If `license` is null, the mapping predates license recording: run `rebuild`, or
 cite the license as given at https://www.uniprot.org/help/license.
 
-## Output columns
+## Output contract (schema 1)
+
+The CSV and the summary below are frozen, because other skills read them. The
+summary's `output_schema` gives the contract number, currently `1`.
+
+- Columns keep these names and this order. New columns are added only at the end.
+- The `mapping_status` values below are the full set.
+- The summary keys below keep their names and meaning. New keys may be added.
+- Anything else (a renamed, removed or reordered column, a changed meaning, a
+  new status) raises `output_schema` and is called out in this file.
+
+### CSV
+
+One row per gene and returned accession. Genes keep the order of their first
+appearance in the input, and within a gene reviewed accessions come first. Every
+distinct input id has at least one row.
 
 | Column | Meaning |
 | --- | --- |
@@ -137,14 +153,42 @@ cite the license as given at https://www.uniprot.org/help/license.
 | `mapping_status` | Gene-level status, below |
 | `n_reviewed`, `n_unreviewed` | Accessions available for the gene |
 
-| `mapping_status` | Meaning |
+| `mapping_status` | Meaning | `uniprot_accession` |
+| --- | --- | --- |
+| `reviewed` | One reviewed accession | filled |
+| `multiple_reviewed` | Several reviewed accessions | filled |
+| `unreviewed` | Only unreviewed accessions exist and they were returned | filled |
+| `no_reviewed_hit` | Unreviewed accessions exist but were withheld by the policy | blank |
+| `not_found` | MGI id absent from the UniProt file | blank |
+| `invalid_id` | Not an `MGI:<digits>` id | blank |
+
+### Summary (JSON on stderr)
+
+| Key | Meaning |
 | --- | --- |
-| `reviewed` | One reviewed accession |
-| `multiple_reviewed` | Several reviewed accessions |
-| `no_reviewed_hit` | Unreviewed accessions exist but were withheld by the policy |
-| `unreviewed` | Only unreviewed accessions exist and they were returned |
-| `not_found` | MGI id absent from the UniProt file |
-| `invalid_id` | Not an `MGI:<digits>` id |
+| `output_schema` | Contract number |
+| `unreviewed_policy` | `exclude`, `fallback` or `include` |
+| `input_ids`, `unique_ids`, `rows_written` | Counts for the run |
+| `output` | The `--out` path, or `stdout` |
+| `status_counts` | Genes per `mapping_status`; all six are listed, zeros included |
+| `no_reviewed_hit`, `not_found`, `invalid_id` | `count`, up to 25 `ids`, and `truncated` |
+| `source` | `uniprot_release`, `last_modified`, `retrieved_at`, `source_sha256`, `mapping_sha256`, `license` |
+
+The exit code is 0 when the lookup ran and 1 on any error. Do not use the
+output of a run that exited 1.
+
+## Use from another skill
+
+A skill that needs UniProt accessions for IMPC genes names this skill as a
+prerequisite and follows its workflow, rather than mapping ids itself. It then:
+
+- reads the CSV by column name and checks that `output_schema` is the number it
+  was written for;
+- uses only rows with a `uniprot_accession`, and reports the genes left out with
+  their `mapping_status`;
+- resolves `no_reviewed_hit` with the user as in step 4 before it continues, and
+  does not apply its own reviewed or unreviewed rule;
+- copies the `source` block into its own provenance and keeps the attribution.
 
 ## Managing the mapping
 
