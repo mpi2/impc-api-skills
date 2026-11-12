@@ -48,7 +48,32 @@ MAPPING_NAME = "mgi_uniprot.tsv.gz"
 METADATA_NAME = "metadata.json"
 HISTORY_NAME = "download_history.jsonl"
 MAPPING_HEADER = ["mgi_id", "uniprot_accession", "entry_name", "gene_name", "reviewed"]
-OUTPUT_FIELDS = [*MAPPING_HEADER, "mapping_status", "n_reviewed", "n_unreviewed"]
+
+# Frozen output contract of `map`, documented in SKILL.md under "Output contract".
+# Other skills read this CSV and summary. New columns go at the end and new summary
+# keys may be added. Renaming, removing or reordering a column, changing what a
+# value means, or adding a status needs a new OUTPUT_SCHEMA number.
+# The columns are spelled out, not derived from MAPPING_HEADER, so a change to the
+# cached mapping's layout cannot change the output.
+OUTPUT_SCHEMA = 1
+OUTPUT_FIELDS = [
+    "mgi_id",
+    "uniprot_accession",
+    "entry_name",
+    "gene_name",
+    "reviewed",
+    "mapping_status",
+    "n_reviewed",
+    "n_unreviewed",
+]
+MAPPING_STATUSES = [
+    "reviewed",
+    "multiple_reviewed",
+    "no_reviewed_hit",
+    "unreviewed",
+    "not_found",
+    "invalid_id",
+]
 
 USER_AGENT = "impc-uniprot-mapper"
 TIMEOUT_SECONDS = 60
@@ -369,7 +394,7 @@ def map_ids(args: argparse.Namespace) -> int:
 
     output = open(args.out, "w", encoding="utf-8", newline="") if args.out else sys.stdout
     try:
-        writer = csv.DictWriter(output, fieldnames=OUTPUT_FIELDS, lineterminator="\n")
+        writer = csv.DictWriter(output, fieldnames=OUTPUT_FIELDS, lineterminator="\n", extrasaction="ignore")
         writer.writeheader()
         writer.writerows(rows)
     finally:
@@ -379,13 +404,16 @@ def map_ids(args: argparse.Namespace) -> int:
     def with_status(status: str) -> list[str]:
         return [gene for gene, value in status_by_gene.items() if value == status]
 
+    status_counts = Counter(status_by_gene.values())
     summary = {
+        "output_schema": OUTPUT_SCHEMA,
         "unreviewed_policy": args.unreviewed,
         "input_ids": len(inputs),
         "unique_ids": len(unique),
         "rows_written": len(rows),
         "output": args.out or "stdout",
-        "status_counts": dict(Counter(status_by_gene.values())),
+        # Every status is listed, zeros included, so readers need no missing-key handling.
+        "status_counts": {status: status_counts[status] for status in MAPPING_STATUSES},
         "no_reviewed_hit": capped(with_status("no_reviewed_hit")),
         "not_found": capped(with_status("not_found")),
         "invalid_id": capped(with_status("invalid_id")),
