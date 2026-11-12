@@ -95,6 +95,56 @@ flowchart LR
 ```
 
 
+# impc-protein-resources workflow (experimental)
+
+```mermaid
+flowchart LR
+    Q[/"MGI ids, IMPC CSV<br/>or gene set description"/]
+    BUILT{"UniProt mapping<br/>built?"}
+    BUILD["impc-uniprot-mapper<br/>build"]
+    MAPPER["impc-uniprot-mapper<br/>map"]
+    IDS[("uniprot_ids.csv<br/>output contract schema 1")]
+    ASK{"Which<br/>resources?"}
+    AF["protein_resources.py alphafold"]
+    GO["protein_resources.py go"]
+    RE["protein_resources.py reactome"]
+    AFDB[("AlphaFold DB API")]
+    GOA[("GOA mouse file<br/>cached")]
+    QGO[("QuickGO API")]
+    REACT[("Reactome UniProt to<br/>pathway file, cached")]
+    OUT["Outputs<br/>one CSV per resource + README.md"]
+
+    Q --> BUILT
+    BUILT -- Yes --> MAPPER
+    BUILT -. No .-> BUILD --> MAPPER
+    MAPPER --> IDS --> ASK
+    ASK -- "structures" --> AF
+    ASK -- "GO annotations" --> GO
+    ASK -- "pathways" --> RE
+    AFDB --> AF
+    GOA --> GO
+    QGO -. "accessions the file lacks" .-> GO
+    REACT --> RE
+    AF --> OUT
+    GO --> OUT
+    RE --> OUT
+
+    %% shared palette (same in all diagrams), Okabe-Ito based, checked for protan/deutan/tritan
+    classDef source fill:#dc8cbb,stroke:#a0527c,color:#1a1a1a
+    classDef skill fill:#8ecdf0,stroke:#0072b2,color:#1a1a1a
+    classDef decision fill:#f5ec85,stroke:#8a7f00,color:#1a1a1a
+    classDef step fill:#ffffff,stroke:#525252,color:#1a1a1a
+    classDef output fill:#5cc4a3,stroke:#00664a,color:#1a1a1a
+    classDef input fill:#e5e5e5,stroke:#737373,color:#1a1a1a
+    class Q input
+    class AFDB,GOA,QGO,REACT,IDS source
+    class MAPPER,BUILD skill
+    class ASK,BUILT decision
+    class AF,GO,RE step
+    class OUT output
+```
+
+
 # Data skills output
 
 ```mermaid
