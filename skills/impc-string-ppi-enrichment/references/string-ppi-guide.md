@@ -101,6 +101,9 @@ row matched, and `gene_match_level` is the first level at which the gene matched
 | `genes_in_set`, `proteins_mapped` | Unique genes in, proteins sent to STRING |
 | `number_of_nodes`, `number_of_edges`, `average_node_degree`, `local_clustering_coefficient`, `expected_number_of_edges`, `p_value` | STRING's fields, unchanged |
 | `status` | `worked`, or why the row has no result |
+| `string_network_url` | Link to the set's interactive STRING network; same under both backgrounds |
+| `network_view_status` | `link`, a dense or no-link note, or why there is no link or image |
+| `network_image` | PNG path under `06_network_images/`; empty without `--images` |
 
 `p_value` is STRING's value for one test. Neither STRING nor this skill corrects
 it across gene sets.
@@ -141,6 +144,38 @@ matter to a result.
 UniProt does not improve on this. Using one accession per gene, it mapped fewer
 genes (9,534), rescued none of the genes left unmapped, and reached an entry
 with another name for 11 of those 12 genes.
+
+## Network view
+
+Each tested set gets a STRING `get_link` URL from the same proteins, species
+and `required_score` as the test, so the view shows the tested network. STRING
+suggests a higher score for large views; the script does not raise it, because
+the view would no longer match the test.
+
+STRING's own guidance (MCP `string_help`, topic `large_input`): under about 300
+proteins is optimal, larger networks become hairballs, and past about 2,000 the
+website disables the network view. The script follows that: over 300 is flagged
+`dense`, over 2,000 gets no link, and the user is pointed to the Cytoscape
+stringApp with ids from `03_string_mapping.csv`.
+
+The API itself did not refuse any size tested, so the limit is readability.
+A 1,554-protein link (MP:0005390) opened in a browser, slowly:
+
+| Proteins | `get_link` | SVG image |
+| ---: | --- | --- |
+| 300 | 1.3 s | 10 MB, 3 s |
+| 1,000 | 1.6 s | 36 MB, 11 s |
+| 2,000 | 2.0 s | 8.5 MB, 14 s |
+| 2,500 | 2.4 s | 12 MB, 22 s |
+
+`--images` saves PNGs (`/api/image/network`) for sets of 300 proteins or fewer
+only. It is off by default for the size and readability reasons above; a
+17-protein PNG is about 70 KB.
+
+Only the network is linked. STRING's per-edge evidence channels (`escore`,
+`dscore` and others from `/api/tsv/network`) are not retrieved, and STRING does
+not record which experimental method (such as mass spectrometry) supports an
+interaction.
 
 ## Limits
 

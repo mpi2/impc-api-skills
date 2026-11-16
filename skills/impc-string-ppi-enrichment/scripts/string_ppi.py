@@ -5,10 +5,12 @@ Reads the gene table built in step 3 of the skill, maps genes to mouse STRING
 proteins and tests each gene set twice: against the whole proteome (STRING MCP
 `string_ppi_enrichment`) and against IMPC-tested genes (STRING REST, because
 the MCP tool has no background parameter). When there are two or more sets,
-their union is tested as well.
+their union is tested as well. Each tested set also gets a link to its
+interactive STRING network, unless it is too large for STRING's viewer.
 
 Writes 03_string_mapping.csv, 04_ppi_enrichment.csv,
-05_impc_tested_background.csv and string_run.json to --out-dir.
+05_impc_tested_background.csv and string_run.json to --out-dir, plus
+06_network_images/ with --images.
 """
 from __future__ import annotations
 
@@ -38,6 +40,13 @@ MAP_CHUNK = 2000
 MIN_PROTEINS = 2  # STRING expands a single protein to its neighbours
 RESULT_FIELDS = ["number_of_nodes", "number_of_edges", "average_node_degree",
                  "local_clustering_coefficient", "expected_number_of_edges", "p_value"]
+# Network view limits, from STRING's own guidance (MCP string_help, large_input):
+# under ~300 proteins reads well, larger networks become hairballs, and past
+# ~2000 the website disables the network view.
+VIEW_DENSE = 300
+VIEW_MAX = 2000
+IMAGE_MAX = 300  # a 1,000-protein network was a 36 MB SVG
+IMAGE_DIR = "06_network_images"
 REQUIRED_COLUMNS = ["query_mp_term_id", "query_mp_term_name", "marker_accession_id", "marker_symbol"]
 
 
@@ -49,14 +58,15 @@ def log(message: str) -> None:
     print(message, file=sys.stderr)
 
 
-def string_post(method: str, data: dict, retries: int = 2):
-    url = f"{REST_URL}/json/{method}"
+def string_post(method: str, data: dict, retries: int = 2, fmt: str = "json"):
+    """POST to STRING REST; returns parsed JSON, or raw bytes for other formats."""
+    url = f"{REST_URL}/{fmt}/{method}"
     payload = {**data, "caller_identity": CALLER}
     body = urllib.parse.urlencode(payload).encode()
     for attempt in range(retries + 1):
         try:
             with urllib.request.urlopen(urllib.request.Request(url, body), timeout=280) as r:
-                result = json.load(r)
+                result = json.load(r) if fmt == "json" else r.read()
             time.sleep(DELAY_SECONDS)
             return result
         except urllib.error.HTTPError as e:
@@ -183,6 +193,44 @@ def background_run(proteins: list[str], background: list[str], score: int) -> di
     })[0]
 
 
+def network_view(name: str, proteins: list[str], score: int, images: bool,
+                 out_dir: Path) -> tuple[dict, list[str]]:
+    """Link to the set's interactive STRING network and, with --images, a PNG.
+
+    Uses the same proteins, species and score as the test, so the view shows
+    the network that was tested. Score is never raised to thin a dense view.
+    """
+    view = {"string_network_url": "", "network_view_status": "", "network_image": ""}
+    errors: list[str] = []
+    n = len(proteins)
+    if n > VIEW_MAX:
+        view["network_view_status"] = (
+            f"no link: {n} proteins, over STRING's ~{VIEW_MAX} viewer limit; "
+            "load the ids from 03_string_mapping.csv into Cytoscape stringApp")
+        return view, errors
+    request = {"identifiers": "\r".join(proteins), "species": SPECIES, "required_score": score}
+    try:
+        view["string_network_url"] = string_post("get_link", request)[0]
+        view["network_view_status"] = (
+            f"link; dense: {n} proteins, over {VIEW_DENSE}" if n > VIEW_DENSE else "link")
+    except (RuntimeError, IndexError) as e:
+        view["network_view_status"] = f"link failed: {e}"
+        errors.append(f"{name} network link: {e}")
+    if images:
+        if n > IMAGE_MAX:
+            view["network_view_status"] += f"; no image: over {IMAGE_MAX} proteins"
+        else:
+            path = out_dir / IMAGE_DIR / f"{name.replace(':', '_')}.png"
+            try:
+                path.parent.mkdir(exist_ok=True)
+                path.write_bytes(string_post("network", request, fmt="image"))
+                view["network_image"] = str(path.relative_to(out_dir))
+            except (RuntimeError, OSError) as e:
+                view["network_view_status"] += f"; image failed: {e}"
+                errors.append(f"{name} network image: {e}")
+    return view, errors
+
+
 def write_csv(path: Path, rows: list[dict], fields: list[str]) -> None:
     with path.open("w", newline="") as handle:
         writer = csv.DictWriter(handle, fieldnames=fields)
@@ -204,6 +252,9 @@ def main() -> int:
     parser.add_argument("--out-dir", type=Path, required=True)
     parser.add_argument("--required-score", type=int, default=400,
                         help="STRING interaction confidence, 0-1000 (default 400, STRING's own default)")
+    parser.add_argument("--images", action="store_true",
+                        help=f"also save a PNG of each network of {IMAGE_MAX} proteins or fewer "
+                             f"to {IMAGE_DIR}/ (off by default: large images are slow and unreadable)")
     args = parser.parse_args()
     if not 0 <= args.required_score <= 1000:
         parser.error("--required-score must be between 0 and 1000")
@@ -253,9 +304,12 @@ def main() -> int:
             status = (f"not tested: fewer than {MIN_PROTEINS} mapped proteins; "
                       "STRING would test its own neighbours instead")
             log(f"{name}: {status}")
+            view = {"string_network_url": "", "network_image": "",
+                    "network_view_status": f"not made: fewer than {MIN_PROTEINS} mapped proteins"}
             for bg in ("proteome", "impc_tested"):
-                rows.append(result_row(*common, bg, "", score, None, status))
+                rows.append({**result_row(*common, bg, "", score, None, status), **view})
             continue
+        first = len(rows)
         try:
             result, source, warning = proteome_run(client, proteins, score)
             errors += [f"{name}: {warning}"] if warning else []
@@ -269,10 +323,15 @@ def main() -> int:
         except RuntimeError as e:
             errors.append(f"{name} impc_tested: {e}")
             rows.append(result_row(*common, "impc_tested", "rest", score, None, f"failed: {e}"))
+        view, view_errors = network_view(name, proteins, score, args.images, args.out_dir)
+        errors += view_errors
+        for row in rows[first:]:
+            row.update(view)  # one network per set, the same under both backgrounds
         log(f"{name}: {len(proteins)} proteins done")
 
     fields = ["gene_set", "gene_set_label", "set_type", "background", "source", "required_score",
-              "genes_in_set", "proteins_mapped", *RESULT_FIELDS, "status"]
+              "genes_in_set", "proteins_mapped", *RESULT_FIELDS, "status",
+              "string_network_url", "network_view_status", "network_image"]
     write_csv(args.out_dir / "04_ppi_enrichment.csv", rows, fields)
 
     try:
@@ -287,6 +346,14 @@ def main() -> int:
         "required_score": score,
         "mcp": {"url": MCP_URL, "tool": MCP_TOOL, "used": client is not None},
         "rest": {"url": f"{REST_URL}/json/ppi_enrichment", "caller_identity": CALLER},
+        "network_view": {
+            "link_method": f"{REST_URL}/json/get_link",
+            "dense_above_proteins": VIEW_DENSE,
+            "no_link_above_proteins": VIEW_MAX,
+            "images": args.images,
+            "image_method": f"{REST_URL}/image/network" if args.images else None,
+            "image_max_proteins": IMAGE_MAX,
+        },
         "background": {
             "definition": "genes in the IMPC statistical-result core with status:Successful",
             "solr_query": "status:Successful",

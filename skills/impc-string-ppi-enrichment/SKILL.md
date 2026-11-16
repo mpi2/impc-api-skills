@@ -24,6 +24,7 @@ phenotype ids or labels                     OLS · references/term-resolution.md
       → STRING proteins (mouse, 10090)
         → vs proteome                       STRING MCP string_ppi_enrichment
         → vs IMPC-tested genes              STRING REST (MCP has no background option)
+        → network link per set              STRING REST get_link (image only with --images)
 ```
 
 ## Prerequisites
@@ -127,6 +128,15 @@ them shows whether one phenotype drives it.
 STRING's. Change it only on request, because results depend on it:
 `references/string-ppi-guide.md` has the figures and each file's columns.
 
+Each tested set also gets a link to its interactive STRING network, built from
+the same proteins and score as the test. Sets over 300 proteins are flagged as
+dense, and sets over 2,000 get no link because STRING's viewer stops there.
+
+`--images` also saves a PNG of each network with 300 proteins or fewer to
+`06_network_images/`. It is off by default because images are slow to make
+and unreadable past a few hundred proteins (a 1,000-protein network came to a
+36 MB SVG). Run without it unless the user asks for images.
+
 Genes map by MGI id, then by exact symbol match. The script exits 1 if any
 request failed or MCP fell back to REST, after still writing all outputs. Check `errors` in `string_run.json` and `status` in
 `04_ppi_enrichment.csv`.
@@ -134,8 +144,15 @@ request failed or MCP fell back to REST, after still writing all outputs. Check 
 ### 4. Report
 
 Show `04_ppi_enrichment.csv` as a table, keeping both backgrounds for each set
-side by side. Report what STRING returned and do not call a network enriched,
-real or significant. Then write `README.md` following
+side by side, with each set's `string_network_url` printed as a plain URL, not
+a markdown link, so the user can copy it, and `network_view_status` when there
+is no link or the view is dense. Dense views can take a while to load. Report what
+STRING returned and do not call a network enriched, real or significant.
+
+Then tell the user plainly, in its own line, that network images are available
+with `--images` and were left off: they are slow to make, unreadable past a few
+hundred proteins and only made for sets of 300 proteins or fewer. Skip this if
+the run already used `--images`. Then write `README.md` following
 `impc-data-retriever/references/output-report.md`. Include:
 
 - the term resolution, and genes per level from `01_resolved_terms.csv`;
@@ -145,6 +162,8 @@ real or significant. Then write `README.md` following
 - the background note from `references/string-ppi-guide.md`;
 - that p-values are uncorrected across sets;
 - unmapped genes, rejected symbol hits and sets not tested;
+- the network link for each set, and which sets had none or were dense;
+- that network images are available with `--images` and why they are off;
 - values from `string_run.json`: STRING version, required score, background size.
 
 ## Output
@@ -154,8 +173,9 @@ real or significant. Then write `README.md` following
 | `01_resolved_terms.csv` | Term ids, labels, rows, and genes new at each level |
 | `02_impc_genes.csv` | One row per IMPC statistical call, with queried term and match level |
 | `03_string_mapping.csv` | One row per gene: STRING id, how it mapped, name differences |
-| `04_ppi_enrichment.csv` | One row per gene set × background, with STRING's fields |
+| `04_ppi_enrichment.csv` | One row per gene set × background, with STRING's fields and a network link |
 | `05_impc_tested_background.csv` | Proteins used as the IMPC-tested background |
+| `06_network_images/` | PNG per set of 300 proteins or fewer; only with `--images` |
 | `string_run.json` | Versions, parameters, mapping counts, errors |
 | `README.md` | Report and provenance |
 
