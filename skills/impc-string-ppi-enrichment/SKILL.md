@@ -1,7 +1,7 @@
 ---
 name: impc-string-ppi-enrichment
 description: >-
-  Test whether the genes behind IMPC mouse phenotypes form a connected protein network. Takes a list of MP terms, as ids or labels, retrieves the IMPC genes with those phenotypes and runs STRING protein-protein interaction (PPI) enrichment, against both the proteome and IMPC-tested genes. Use it whenever a user wants STRING, PPI enrichment, interaction enrichment or network connectivity for IMPC phenotypes, MP terms or knockout gene sets, or asks whether genes sharing a mouse phenotype interact more than expected, even if they never say "enrichment". Not for functional (GO/KEGG) enrichment or single-gene interaction lookups.
+  Test whether the genes behind IMPC mouse phenotypes form a connected protein network. Retrieves genes for MP ids or labels, runs STRING PPI enrichment against both the proteome and IMPC-tested genes, provides interactive network links, and compares opposite phenotype directions where applicable. Use for STRING links, PPI enrichment, interaction enrichment or network connectivity for IMPC phenotypes or knockout gene sets, including whether genes sharing a phenotype interact more than expected. Not for functional (GO/KEGG) enrichment or single-gene interaction lookups.
 ---
 
 # IMPC phenotypes → STRING PPI enrichment
@@ -48,6 +48,27 @@ after the request and number files in the order below.
 Look up every input in OLS. Read `references/term-resolution.md` for the lookup
 and the rule on when to ask. In short: continue on an exact label match to one
 active term, or an active id; otherwise show candidates and wait.
+
+#### Compare opposite phenotype directions
+
+For a parent phenotype such as abnormal bone mineral density, check OLS for
+active descendants describing opposite changes in the same measurement, such
+as decreased and increased bone mineral density. Verify their definitions and
+ancestry; do not invent ids, infer direction from effect-size signs, or split
+unrelated anatomical abnormalities into artificial opposites.
+
+When a clear pair exists, keep the requested parent and add both directional
+terms to `terms` before step 2. State which terms were added and why. Skip this
+automatic expansion for exact-only requests or when the user limits the
+analysis to specified terms. If the pairing is ambiguous, retain the requested
+analysis and offer the candidates without choosing a pair silently.
+
+Query each direction separately with the same sex, zygosity, life-stage and
+other filters. Include its descendants under the usual matching rule. Keep
+genes associated with both directions in both sets and report their overlap;
+opposite calls can occur in different experimental contexts. Leave rows with
+only a parent annotation in the parent set. Record zero-result directions in
+`01_resolved_terms.csv`; do not interpret missing data as absence of biology.
 
 ### 2. Get the genes
 
@@ -141,13 +162,20 @@ Genes map by MGI id, then by exact symbol match. The script exits 1 if any
 request failed or MCP fell back to REST, after still writing all outputs. Check `errors` in `string_run.json` and `status` in
 `04_ppi_enrichment.csv`.
 
+The script generates links for directional sets and `combined` as well; use
+`string_network_url` from `04_ppi_enrichment.csv` without making duplicate
+link requests or creating a separate links file. These links show STRING
+functional associations, which need not be physical interactions. They do not
+reproduce the custom IMPC-tested enrichment background; the saved enrichment
+results remain the source for that test.
+
 ### 4. Report
 
 Show `04_ppi_enrichment.csv` as a table, keeping both backgrounds for each set
-side by side, with each set's `string_network_url` printed as a plain URL, not
-a markdown link, so the user can copy it, and `network_view_status` when there
-is no link or the view is dense. Dense views can take a while to load. Report what
-STRING returned and do not call a network enriched, real or significant.
+side by side, with each set's `string_network_url` as a clickable Markdown link
+using the URL as its label so the user can copy it, and `network_view_status`
+when there is no link or the view is dense. Dense views can take a while to load.
+Report what STRING returned and do not call a network enriched, real or significant.
 
 Then tell the user plainly, in its own line, that network images are available
 with `--images` and were left off: they are slow to make, unreadable past a few
@@ -164,7 +192,13 @@ the run already used `--images`. Then write `README.md` following
 - unmapped genes, rejected symbol hits and sets not tested;
 - the network link for each set, and which sets had none or were dense;
 - that network images are available with `--images` and why they are off;
+- when opposite directions were compared, their gene counts, shared genes and
+  PPI results against both backgrounds. Differences in p-values alone do not
+  establish a statistical difference between directions. The parent may contain
+  additional genes, and its union with its children may duplicate `combined`;
 - values from `string_run.json`: STRING version, required score, background size.
+
+Do not add network clustering, a cluster summary table or functional enrichment.
 
 ## Output
 
@@ -178,6 +212,12 @@ the run already used `--images`. Then write `README.md` following
 | `06_network_images/` | PNG per set of 300 proteins or fewer; only with `--images` |
 | `string_run.json` | Versions, parameters, mapping counts, errors |
 | `README.md` | Report and provenance |
+
+## Example prompt
+
+> Find IMPC genes associated with abnormal bone mineral density, compare
+> decreased versus increased bone mineral density, run PPI enrichment against
+> both backgrounds, and give me clickable STRING network links.
 
 ## Stopping rules
 
