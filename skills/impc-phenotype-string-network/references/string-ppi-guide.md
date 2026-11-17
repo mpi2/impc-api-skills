@@ -1,6 +1,9 @@
 # STRING PPI enrichment guide
 
-Figures below are from STRING 12.5, mouse, 2026-11-06.
+Figures below are from STRING 12.5, mouse, refreshed on 2026-11-17 after an
+IMPC data release that raised IMPC-tested genes from 9,880 to 10,088. They
+move with each IMPC release, so treat them as examples and quote a run's own
+`string_run.json`, not this page, in a report.
 
 ## Background note
 
@@ -19,23 +22,23 @@ Evidence for that note, at required score 400:
 
 | Gene set | Proteins | Observed edges | Expected, proteome | p, proteome | Expected, IMPC-tested | p, IMPC-tested |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| MP:0000063 *decreased bone mineral density* | 314 | 352 | 277 | 8.52e-06 | 295 | 6.5e-04 |
-| MP:0010119 *abnormal bone mineral density* | 457 | 715 | 578 | 2.24e-08 | 618 | 6.93e-05 |
-| MP:0005390 *skeleton phenotype* | 1,554 | 7,989 | 7,070 | 5.01e-27 | 7,440 | 1.6e-10 |
-| MP:0002160 *abnormal reproductive system morphology* | 829 | 1,770 | 1,715 | 0.094 | 1,684 | 0.019 |
+| MP:0000063 *decreased bone mineral density* | 348 | 451 | 346 | 4.02e-08 | 366 | 9.77e-06 |
+| MP:0010119 *abnormal bone mineral density* | 492 | 856 | 691 | 7.32e-10 | 730 | 3.0e-06 |
+| MP:0005390 *skeleton phenotype* | 1,544 | 7,789 | 6,913 | 3.04e-25 | 7,246 | 1.46e-10 |
+| MP:0002160 *abnormal reproductive system morphology* | 453 | 545 | 517 | 0.113 | 502 | 0.029 |
 
 The last row moves the other way, because expected edges fall under the
 IMPC-tested background for that set.
 
-All 8,429 genes with an IMPC phenotype call, tested as one list against the
-proteome, return p=7.64e-53 (8,255 proteins mapped by symbol). No phenotype
+All 8,546 genes with an IMPC phenotype call, tested as one list against the
+proteome, return p=6.31e-57 (8,486 proteins, mapped as below). No phenotype
 selection went into that list.
 
 ## Background definition
 
-Genes in the `statistical-result` core with `status:Successful`: 9,880 genes,
-9,790 proteins, mapped by the same rule as query genes. It includes genes tested
-with no hit, so it is wider than the 8,429 in `genotype-phenotype`, all of which
+Genes in the `statistical-result` core with `status:Successful`: 10,088 genes,
+9,996 proteins, mapped by the same rule as query genes. It includes genes tested
+with no hit, so it is wider than the 8,546 in `genotype-phenotype`, all of which
 it contains.
 
 STRING returns an error if a query protein is missing from the background
@@ -56,12 +59,17 @@ The merged p-value does not say which direction drives it:
 
 | Set | Genes | p, proteome | p, IMPC-tested |
 | --- | ---: | ---: | ---: |
-| MP:0001259 *abnormal body weight*, with descendants | 173 | 0.0015 | 0.01 |
-| MP:0001262 *decreased body weight* | 155 | 0.028 | 0.088 |
-| MP:0001260 *increased body weight* | 17 | 0.22 | 0.25 |
+| MP:0001259 *abnormal body weight*, with descendants | 192 | 0.00054 | 0.0064 |
+| MP:0001262 *decreased body weight* | 168 | 0.0023 | 0.013 |
+| MP:0001260 *increased body weight* | 24 | 0.27 | 0.33 |
 
-`mp_term_name` in `02_impc_genes.csv` shows each row's own term, so a user can
-rerun the child terms.
+`mp_term_name` in `02_impc_genes.csv` shows each row's own term, and
+`02_term_breakdown.csv` counts genes per row-level term under each queried
+term, so a user can see which children a parent merges and rerun them.
+
+When a parent is queried with its own children, their union is the parent's
+gene set. The script does not test `combined` again in that case: its rows say
+`not tested: same genes as <term>`.
 
 ## Confidence score
 
@@ -70,9 +78,9 @@ Results depend on it, shown here for MP:0000063 against the proteome:
 
 | Score | Edges | Expected | p |
 | ---: | ---: | ---: | ---: |
-| 150 | 2,252 | 2,086 | 1.7e-04 |
-| 400 | 352 | 277 | 8.52e-06 |
-| 700 | 63 | 57 | 0.21 |
+| 150 | 2,824 | 2,613 | 2.28e-05 |
+| 400 | 451 | 346 | 4.02e-08 |
+| 700 | 92 | 70 | 0.0072 |
 
 ## Output columns
 
@@ -100,10 +108,10 @@ row matched, and `gene_match_level` is the first level at which the gene matched
 | `required_score` | Confidence threshold used |
 | `genes_in_set`, `proteins_mapped` | Unique genes in, proteins sent to STRING |
 | `number_of_nodes`, `number_of_edges`, `average_node_degree`, `local_clustering_coefficient`, `expected_number_of_edges`, `p_value` | STRING's fields, unchanged |
-| `status` | `worked`, or why the row has no result |
+| `status` | `worked`, or why the row has no result, such as `not tested: same genes as <term>` |
 | `string_network_url` | Link to the set's interactive STRING network; same under both backgrounds |
 | `network_view_status` | `link`, a dense or no-link note, or why there is no link or image |
-| `network_image` | PNG path under `06_network_images/`; empty without `--images` |
+| `network_image` | PNG path under `06_network_images/`, flattened onto white; empty without `--images` |
 
 `p_value` is STRING's value for one test. Neither STRING nor this skill corrects
 it across gene sets.
@@ -115,6 +123,11 @@ it across gene sets.
 | `mapped_via` | `mgi_id`, `symbol` or `unmapped` |
 | `name_differs` | STRING's preferred name differs from the IMPC symbol |
 | `rejected_symbol_hit` | Name STRING offered for a symbol that was refused |
+
+`requests` in `string_run.json` lists every request the script made, in
+order: purpose, function, URL, parameters (identifier lists as counts) and
+outcome (`worked`, `zero results`, `failed` or `not run`). After a crash the
+file holds only `status: crashed`, the error and `requests`.
 
 ## Mapping
 
@@ -130,20 +143,27 @@ Order, for query genes and the background:
    Ccdc39.
 3. Otherwise unmapped, recorded and left out of the test.
 
-This maps 9,790 of 9,880 tested genes.
+This maps 9,996 of 10,088 tested genes: 9,980 by MGI id and 16 by symbol.
 
-`name_differs` flags 295 of these genes, plus 12 more. For 145 of the 295, the
-symbol reaches the same protein, so the name is just different (Sars1 is Sars in
-STRING). For 148, only the MGI id maps, so that check is not available. For the
-12, the MGI id reaches a different entry from the one carrying the gene's name,
-such as Cox5b → Gm11273. Those entries look like near-identical proteins, and
-the MGI entry often holds the fuller protein annotation, so neither is clearly
-wrong. Semg1 and Fcrl2 disagree with IMPC by both routes; review them if they
-matter to a result.
+`name_differs` flags 384 genes. For 168, the symbol reaches the same protein,
+so the name is just different (Sars1 is Sars in STRING). For 203, the symbol
+has no exact hit, so only the MGI id maps. For 13, the MGI id reaches a
+different entry from the one carrying the gene's name, such as Cox5b →
+Gm11273 or Hmga1 → Hmga1b. Those entries look like near-identical proteins,
+and the MGI entry often holds the fuller protein annotation, so neither is
+clearly wrong; review them if they matter to a result.
 
-UniProt does not improve on this. Using one accession per gene, it mapped fewer
-genes (9,534), rescued none of the genes left unmapped, and reached an entry
-with another name for 11 of those 12 genes.
+UniProt does not improve on this. Measured on the release before 2026-11-17,
+with one accession per gene, it mapped fewer genes (9,534 of 9,880), rescued
+none of the genes left unmapped, and reached an entry with another name for
+11 of the 12 genes then in the last group.
+
+STRING holds proteins only, so non-coding RNA genes (miRNA, snoRNA, lncRNA)
+and pseudogenes never map. IMPC has few of them, but they do occur: Mir96,
+Mir129-2 and Snord11 have heart morphology calls, and Krt74 is a pseudogene in
+Ensembl. Reports list unmapped genes with that note, so a missing gene is not
+mistaken for a mapping fault. Not every unmapped gene is non-coding: Anxa13 is
+protein-coding but has no STRING entry.
 
 ## Network view
 
@@ -170,7 +190,10 @@ A 1,554-protein link (MP:0005390) opened in a browser, slowly:
 
 `--images` saves PNGs (`/api/image/network`) for sets of 300 proteins or fewer
 only. It is off by default for the size and readability reasons above; a
-17-protein PNG is about 70 KB.
+17-protein PNG is about 70 KB and a 149-protein one about 500 KB. STRING's PNGs
+have a transparent background, which shows as black in dark viewers, and the
+API has no background option, so the script flattens each PNG onto white with
+the standard library (about 1 second for a 1,279 × 1,258 image).
 
 Only the network is linked. STRING's per-edge evidence channels (`escore`,
 `dscore` and others from `/api/tsv/network`) are not retrieved, and STRING does
@@ -179,7 +202,8 @@ interaction.
 
 ## Limits
 
-No size limit appeared up to 8,429 ids in about 10 seconds. STRING asks for one
+No size limit appeared up to 8,486 proteins, all IMPC phenotype genes in one
+test. STRING asks for one
 second between calls and no parallel scripts, which the script follows. STRING
 describes its MCP server as under development, so a tool may change; the script
 checks that `string_ppi_enrichment` is listed and otherwise uses REST.

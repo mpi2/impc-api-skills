@@ -70,11 +70,13 @@ flowchart LR
     STR["string_ppi.py"]
     MCP[("STRING MCP<br/>vs proteome")]
     REST[("STRING REST<br/>vs IMPC-tested genes")]
+    LINK[("STRING REST<br/>network link per set")]
     OUT["Outputs<br/>CSV tables + README.md"]
 
     Q --> OLS --> IDR --> STR
     STR --> MCP --> OUT
     STR --> REST --> OUT
+    STR --> LINK --> OUT
 
     %% shared palette (same in all diagrams), Okabe-Ito based, checked for protan/deutan/tritan
     classDef source fill:#dc8cbb,stroke:#a0527c,color:#1a1a1a
@@ -83,7 +85,7 @@ flowchart LR
     classDef output fill:#5cc4a3,stroke:#00664a,color:#1a1a1a
     classDef input fill:#e5e5e5,stroke:#737373,color:#1a1a1a
     class Q input
-    class OLS,MCP,REST source
+    class OLS,MCP,REST,LINK source
     class IDR skill
     class STR step
     class OUT output

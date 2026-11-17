@@ -13,6 +13,12 @@ clean.
 - REST fallback:
   `https://www.ebi.ac.uk/ols4/api/search?q=<label>&ontology=mp&fieldList=obo_id,label,is_defining_ontology,is_obsolete,description`
 - Id lookup: search the id itself the same way, or call OLS `fetch`.
+- Children, for the opposite-direction check: MCP `getChildren`, or REST
+  `https://www.ebi.ac.uk/ols4/api/ontologies/mp/terms/<IRI>/children?size=500`,
+  where `<IRI>` is the term IRI encoded twice, for MP:0010119
+  `http%253A%252F%252Fpurl.obolibrary.org%252Fobo%252FMP_0010119`. Keep only
+  `obo_id`, `label` and `has_children`, and expand only terms with
+  `has_children` true.
 
 Clean the hits: drop obsolete terms, keep terms defined by MP (`MP:` ids), keep
 each id once and keep the top 5.

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Run STRING PPI enrichment on IMPC phenotype gene sets (stdlib only).
 
-Reads the gene table built in step 3 of the skill, maps genes to mouse STRING
+Reads the gene table built in step 2 of the skill, maps genes to mouse STRING
 proteins and tests each gene set twice: against the whole proteome (STRING MCP
 `string_ppi_enrichment`) and against IMPC-tested genes (STRING REST, because
 the MCP tool has no background parameter). When there are two or more sets,
@@ -10,18 +10,21 @@ interactive STRING network, unless it is too large for STRING's viewer.
 
 Writes 03_string_mapping.csv, 04_ppi_enrichment.csv,
 05_impc_tested_background.csv and string_run.json to --out-dir, plus
-06_network_images/ with --images.
+06_network_images/ with --images. string_run.json lists every request the
+script made, in order, with its outcome; it is written even after a crash.
 """
 from __future__ import annotations
 
 import argparse
 import csv
 import json
+import struct
 import sys
 import time
 import urllib.error
 import urllib.parse
 import urllib.request
+import zlib
 from collections import OrderedDict
 from datetime import datetime, timezone
 from pathlib import Path
@@ -48,6 +51,7 @@ VIEW_MAX = 2000
 IMAGE_MAX = 300  # a 1,000-protein network was a 36 MB SVG
 IMAGE_DIR = "06_network_images"
 REQUIRED_COLUMNS = ["query_mp_term_id", "query_mp_term_name", "marker_accession_id", "marker_symbol"]
+REQUESTS: list[dict] = []  # this run's requests, in order, for string_run.json
 
 
 class NothingFound(RuntimeError):
@@ -58,32 +62,53 @@ def log(message: str) -> None:
     print(message, file=sys.stderr)
 
 
-def string_post(method: str, data: dict, retries: int = 2, fmt: str = "json"):
+def attempt(purpose: str, function: str, url: str, params: dict) -> dict:
+    """Record a request before it is sent; the caller fills in the outcome.
+
+    Identifier lists are logged as counts; the files hold the ids themselves.
+    """
+    shown = {key: (f"<{len(value.split(chr(13)))} identifiers>"
+                   if key in ("identifiers", "background_string_identifiers") else value)
+             for key, value in params.items()}
+    entry = {"order": len(REQUESTS) + 1, "purpose": purpose, "function": function,
+             "url": url, "params": shown, "outcome": "not run"}
+    REQUESTS.append(entry)
+    return entry
+
+
+def string_post(method: str, data: dict, purpose: str, retries: int = 2, fmt: str = "json"):
     """POST to STRING REST; returns parsed JSON, or raw bytes for other formats."""
     url = f"{REST_URL}/{fmt}/{method}"
     payload = {**data, "caller_identity": CALLER}
+    entry = attempt(purpose, "STRING REST POST", url, payload)
     body = urllib.parse.urlencode(payload).encode()
-    for attempt in range(retries + 1):
+    for tries in range(retries + 1):
+        entry["tries"] = tries + 1
         try:
             with urllib.request.urlopen(urllib.request.Request(url, body), timeout=280) as r:
                 result = json.load(r) if fmt == "json" else r.read()
+            entry["outcome"] = "worked"
+            entry["returned"] = len(result) if fmt == "json" else f"{len(result)} bytes"
             time.sleep(DELAY_SECONDS)
             return result
         except urllib.error.HTTPError as e:
             detail = e.read().decode(errors="replace")[:300]
             if e.code == 404 and "nothing found" in detail:
+                entry["outcome"] = "zero results"
                 time.sleep(DELAY_SECONDS)
                 raise NothingFound(detail) from e
-            if e.code < 500 or attempt == retries:
+            if e.code < 500 or tries == retries:
+                entry.update(outcome="failed", error=f"HTTP {e.code}: {detail}")
                 raise RuntimeError(f"STRING {method} HTTP {e.code}: {detail}") from e
         except (urllib.error.URLError, TimeoutError) as e:
-            if attempt == retries:
+            if tries == retries:
+                entry.update(outcome="failed", error=str(e))
                 raise RuntimeError(f"STRING {method}: {e}") from e
-        time.sleep(2 * (attempt + 1))
+        time.sleep(2 * (tries + 1))
     raise RuntimeError("unreachable")
 
 
-def map_ids(ids: list[str]) -> dict[str, dict]:
+def map_ids(ids: list[str], purpose: str) -> dict[str, dict]:
     """Map identifiers to one STRING protein each; missing ids stay absent."""
     mapped: dict[str, dict] = {}
     for start in range(0, len(ids), MAP_CHUNK):
@@ -91,7 +116,7 @@ def map_ids(ids: list[str]) -> dict[str, dict]:
             rows = string_post("get_string_ids", {
                 "identifiers": "\r".join(ids[start:start + MAP_CHUNK]),
                 "species": SPECIES, "limit": 1, "echo_query": 1,
-            })
+            }, purpose)
         except NothingFound:
             continue
         for row in rows:
@@ -123,15 +148,16 @@ def same_name(hit: dict, symbol: str) -> bool:
     return hit.get("preferredName", "").casefold() == symbol.casefold()
 
 
-def map_genes(symbols: dict[str, str]) -> list[dict]:
+def map_genes(symbols: dict[str, str], which: str) -> list[dict]:
     """Map by MGI id, which is stable, then by symbol on an exact name match.
 
     A symbol hit with another name is rejected, not used: STRING's best guess
     can be a different gene (Pla2g2a resolves to Itga5).
     """
-    by_mgi = map_ids(sorted(symbols))
+    by_mgi = map_ids(sorted(symbols), f"map {which} by MGI id")
     leftover = {mgi: sym for mgi, sym in symbols.items() if mgi not in by_mgi}
-    by_symbol = map_ids(sorted(set(leftover.values()))) if leftover else {}
+    by_symbol = (map_ids(sorted(set(leftover.values())), f"map remaining {which} by symbol")
+                 if leftover else {})
     table = []
     for mgi in sorted(symbols):
         symbol = symbols[mgi]
@@ -160,37 +186,105 @@ def impc_tested_genes() -> dict[str, str]:
     `impc-api` returns no facets, so this calls Solr directly.
     """
     pivot = "marker_accession_id,marker_symbol"
-    query = urllib.parse.urlencode({
-        "q": "status:Successful", "rows": 0, "wt": "json", "facet": "true",
-        "facet.pivot": pivot, "facet.limit": -1, "facet.mincount": 1,
-    })
-    with urllib.request.urlopen(f"{SOLR_URL}?{query}", timeout=180) as r:
-        genes = json.load(r)["facet_counts"]["facet_pivot"][pivot]
+    params = {"q": "status:Successful", "rows": 0, "wt": "json", "facet": "true",
+              "facet.pivot": pivot, "facet.limit": -1, "facet.mincount": 1}
+    entry = attempt("list IMPC-tested genes for the background", "Solr GET (facet pivot)",
+                    SOLR_URL, params)
+    try:
+        with urllib.request.urlopen(f"{SOLR_URL}?{urllib.parse.urlencode(params)}",
+                                    timeout=180) as r:
+            genes = json.load(r)["facet_counts"]["facet_pivot"][pivot]
+    except Exception as e:
+        entry.update(outcome="failed", error=f"{type(e).__name__}: {e}")
+        raise
+    entry.update(outcome="worked", returned=len(genes))
     return {gene["value"]: gene["pivot"][0]["value"] for gene in genes if gene.get("pivot")}
 
 
-def proteome_run(client, proteins: list[str], score: int) -> tuple[dict, str, str]:
+def proteome_run(client, name: str, proteins: list[str], score: int) -> tuple[dict, str, str]:
     """Prefer the MCP tool; the REST method returns the same numbers if it fails."""
     error = ""
+    purpose = f"{name}: PPI enrichment vs proteome"
     if client is not None:
+        params = {"identifiers": "%0d".join(proteins), "species": str(SPECIES),
+                  "required_score": score}
+        entry = attempt(purpose, f"STRING MCP {MCP_TOOL}", MCP_URL,
+                        {**params, "identifiers": "\r".join(proteins)})
         try:
-            result = client.call_json(MCP_TOOL, {"identifiers": "%0d".join(proteins),
-                                                 "species": str(SPECIES), "required_score": score})
+            result = client.call_json(MCP_TOOL, params)
             time.sleep(DELAY_SECONDS)
+            entry["outcome"] = "worked"
             return result["results"][0], "mcp", ""
         except (RuntimeError, OSError, KeyError, IndexError, ValueError) as e:
             error = f"MCP failed: {e}"
+            entry.update(outcome="failed", error=str(e))
             log(error)
     rows = string_post("ppi_enrichment", {"identifiers": "\r".join(proteins),
-                                          "species": SPECIES, "required_score": score})
+                                          "species": SPECIES, "required_score": score}, purpose)
     return rows[0], "rest", error
 
 
-def background_run(proteins: list[str], background: list[str], score: int) -> dict:
+def background_run(name: str, proteins: list[str], background: list[str], score: int) -> dict:
     return string_post("ppi_enrichment", {
         "identifiers": "\r".join(proteins), "species": SPECIES, "required_score": score,
         "background_string_identifiers": "\r".join(background),
-    })[0]
+    }, f"{name}: PPI enrichment vs IMPC-tested genes")[0]
+
+
+def png_on_white(data: bytes) -> bytes:
+    """Flatten STRING's transparent PNG onto white, so it reads in dark viewers.
+
+    STRING's image API has no background option. Handles the 8-bit RGBA,
+    non-interlaced PNG STRING returns; anything else is returned unchanged.
+    """
+    if data[:8] != b"\x89PNG\r\n\x1a\n":
+        return data
+    pos, header, compressed = 8, b"", []
+    while pos < len(data):
+        length, kind = struct.unpack(">I4s", data[pos:pos + 8])
+        if kind == b"IHDR":
+            header = data[pos + 8:pos + 8 + length]
+        elif kind == b"IDAT":
+            compressed.append(data[pos + 8:pos + 8 + length])
+        pos += 12 + length
+    width, height, depth, color, _, _, interlace = struct.unpack(">IIBBBBB", header)
+    if (depth, color, interlace) != (8, 6, 0):
+        return data
+    raw, stride, bpp = zlib.decompress(b"".join(compressed)), width * 4, 4
+    prior, out = bytearray(stride), bytearray()
+    for row in range(height):
+        start = row * (stride + 1)
+        kind, line = raw[start], bytearray(raw[start + 1:start + 1 + stride])
+        if kind == 1:
+            for i in range(bpp, stride):
+                line[i] = (line[i] + line[i - bpp]) & 0xFF
+        elif kind == 2:
+            line = bytearray((a + b) & 0xFF for a, b in zip(line, prior))
+        elif kind == 3:
+            for i in range(stride):
+                left = line[i - bpp] if i >= bpp else 0
+                line[i] = (line[i] + ((left + prior[i]) >> 1)) & 0xFF
+        elif kind == 4:
+            for i in range(stride):
+                a = line[i - bpp] if i >= bpp else 0
+                b, c = prior[i], (prior[i - bpp] if i >= bpp else 0)
+                p = a + b - c
+                pa, pb, pc = abs(p - a), abs(p - b), abs(p - c)
+                line[i] = (line[i] + (a if pa <= pb and pa <= pc else b if pb <= pc else c)) & 0xFF
+        prior = line
+        alpha = line[3::4]
+        rgb = bytearray(stride // 4 * 3)
+        for channel in range(3):
+            rgb[channel::3] = bytes((v * a + 255 * (255 - a)) // 255
+                                    for v, a in zip(line[channel::4], alpha))
+        out += b"\x00" + rgb
+
+    def chunk(kind: bytes, body: bytes) -> bytes:
+        return (struct.pack(">I", len(body)) + kind + body
+                + struct.pack(">I", zlib.crc32(kind + body) & 0xFFFFFFFF))
+
+    return (data[:8] + chunk(b"IHDR", struct.pack(">IIBBBBB", width, height, 8, 2, 0, 0, 0))
+            + chunk(b"IDAT", zlib.compress(bytes(out), 9)) + chunk(b"IEND", b""))
 
 
 def network_view(name: str, proteins: list[str], score: int, images: bool,
@@ -210,7 +304,7 @@ def network_view(name: str, proteins: list[str], score: int, images: bool,
         return view, errors
     request = {"identifiers": "\r".join(proteins), "species": SPECIES, "required_score": score}
     try:
-        view["string_network_url"] = string_post("get_link", request)[0]
+        view["string_network_url"] = string_post("get_link", request, f"{name}: network link")[0]
         view["network_view_status"] = (
             f"link; dense: {n} proteins, over {VIEW_DENSE}" if n > VIEW_DENSE else "link")
     except (RuntimeError, IndexError) as e:
@@ -223,7 +317,12 @@ def network_view(name: str, proteins: list[str], score: int, images: bool,
             path = out_dir / IMAGE_DIR / f"{name.replace(':', '_')}.png"
             try:
                 path.parent.mkdir(exist_ok=True)
-                path.write_bytes(string_post("network", request, fmt="image"))
+                image = string_post("network", request, f"{name}: network image", fmt="image")
+                try:
+                    image = png_on_white(image)
+                except (struct.error, zlib.error, IndexError, ValueError):
+                    pass  # keep STRING's transparent PNG rather than lose the image
+                path.write_bytes(image)
                 view["network_image"] = str(path.relative_to(out_dir))
             except (RuntimeError, OSError) as e:
                 view["network_view_status"] += f"; image failed: {e}"
@@ -259,18 +358,29 @@ def main() -> int:
     if not 0 <= args.required_score <= 1000:
         parser.error("--required-score must be between 0 and 1000")
     args.out_dir.mkdir(parents=True, exist_ok=True)
-    score = args.required_score
+    try:
+        return run(args)
+    except Exception as e:
+        # Keep the request record when a crash stops the run before its summary
+        (args.out_dir / "string_run.json").write_text(json.dumps({
+            "generated": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+            "status": "crashed", "errors": [f"{type(e).__name__}: {e}"],
+            "requests": REQUESTS}, indent=2, default=str) + "\n")
+        raise
 
+
+def run(args: argparse.Namespace) -> int:
+    score = args.required_score
     sets, symbols = read_gene_sets(args.genes)
     log(f"{len(sets)} gene set(s), {len(symbols)} genes")
 
-    mapping = map_genes(symbols)
-    write_csv(args.out_dir / "03_string_mapping.csv", mapping, list(mapping[0]))
+    mapping = map_genes(symbols, "query genes")
     protein_of = {row["marker_accession_id"]: row["string_id"] for row in mapping if row["string_id"]}
     log(f"mapped {len(protein_of)}/{len(symbols)} genes")
+    write_csv(args.out_dir / "03_string_mapping.csv", mapping, list(mapping[0]))
 
     universe = impc_tested_genes()
-    universe_mapping = map_genes(universe)
+    universe_mapping = map_genes(universe, "IMPC-tested genes")
     tested = {row["string_id"] for row in universe_mapping if row["string_id"]}
     query_proteins = set(protein_of.values())
     # STRING rejects a query protein missing from the background. Query genes
@@ -287,12 +397,16 @@ def main() -> int:
         gene_sets.append(("combined", " + ".join(sets), "combined", union))
 
     client, mcp_error = None, ""
+    entry = attempt("connect to STRING MCP and list its tools", "MCP initialize + tools/list",
+                    MCP_URL, {})
     try:
         client = McpClient(MCP_URL)
         if MCP_TOOL not in {tool["name"] for tool in client.list_tools()}:
             raise RuntimeError(f"{MCP_TOOL} not listed by server")
+        entry["outcome"] = "worked"
     except (RuntimeError, OSError, ValueError, KeyError, IndexError) as e:
         client, mcp_error = None, str(e)
+        entry.update(outcome="failed", error=str(e))
         log(f"STRING MCP unavailable, using REST: {e}")
 
     rows: list[dict] = []
@@ -300,25 +414,34 @@ def main() -> int:
     for name, label, set_type, genes in gene_sets:
         proteins = sorted({protein_of[g] for g in genes if g in protein_of})
         common = (name, label, set_type, len(genes), len(proteins))
-        if len(proteins) < MIN_PROTEINS:
+        # A parent queried with its children already holds their genes, so the
+        # union can equal a set tested above; testing it again repeats that row.
+        duplicate = next((term for term, entry in sets.items() if entry["genes"] == genes), None)
+        if set_type == "combined" and duplicate:
+            status = f"not tested: same genes as {duplicate}"
+            view = {"network_view_status": f"not made: same network as {duplicate}"}
+        elif len(proteins) < MIN_PROTEINS:
             status = (f"not tested: fewer than {MIN_PROTEINS} mapped proteins; "
                       "STRING would test its own neighbours instead")
+            view = {"network_view_status": f"not made: fewer than {MIN_PROTEINS} mapped proteins"}
+        else:
+            status = ""
+        if status:
             log(f"{name}: {status}")
-            view = {"string_network_url": "", "network_image": "",
-                    "network_view_status": f"not made: fewer than {MIN_PROTEINS} mapped proteins"}
             for bg in ("proteome", "impc_tested"):
-                rows.append({**result_row(*common, bg, "", score, None, status), **view})
+                rows.append({**result_row(*common, bg, "", score, None, status),
+                             "string_network_url": "", "network_image": "", **view})
             continue
         first = len(rows)
         try:
-            result, source, warning = proteome_run(client, proteins, score)
+            result, source, warning = proteome_run(client, name, proteins, score)
             errors += [f"{name}: {warning}"] if warning else []
             rows.append(result_row(*common, "proteome", source, score, result, "worked"))
         except RuntimeError as e:
             errors.append(f"{name} proteome: {e}")
             rows.append(result_row(*common, "proteome", "", score, None, f"failed: {e}"))
         try:
-            result = background_run(proteins, background, score)
+            result = background_run(name, proteins, background, score)
             rows.append(result_row(*common, "impc_tested", "rest", score, result, "worked"))
         except RuntimeError as e:
             errors.append(f"{name} impc_tested: {e}")
@@ -335,7 +458,7 @@ def main() -> int:
     write_csv(args.out_dir / "04_ppi_enrichment.csv", rows, fields)
 
     try:
-        version = string_post("version", {})[0]
+        version = string_post("version", {}, "record STRING version")[0]
     except RuntimeError as e:
         version = {"error": str(e)}
     mapped_via = [row["mapped_via"] for row in mapping]
@@ -365,8 +488,10 @@ def main() -> int:
         "mapping": {"genes": len(mapping), "by_mgi_id": mapped_via.count("mgi_id"),
                     "by_symbol": mapped_via.count("symbol"), "unmapped": mapped_via.count("unmapped"),
                     "name_differs": sum(row["name_differs"] for row in mapping)},
+        "status": "finished",
         "errors": errors,
-    }, indent=2) + "\n")
+        "requests": REQUESTS,
+    }, indent=2, default=str) + "\n")
     log(f"wrote {len(rows)} result rows to {args.out_dir}")
     return 1 if errors else 0
 
