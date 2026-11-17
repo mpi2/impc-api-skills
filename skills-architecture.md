@@ -95,7 +95,7 @@ flowchart LR
 ```
 
 
-# impc-protein-resources workflow (experimental)
+# impc-protein-annotation-retriever workflow (experimental)
 
 ```mermaid
 flowchart LR
@@ -105,9 +105,9 @@ flowchart LR
     MAPPER["impc-uniprot-mapper<br/>map"]
     IDS[("uniprot_ids.csv<br/>output contract schema 1")]
     ASK{"Which<br/>resources?"}
-    AF["protein_resources.py alphafold"]
-    GO["protein_resources.py go"]
-    RE["protein_resources.py reactome"]
+    AF["protein_annotations.py alphafold"]
+    GO["protein_annotations.py go"]
+    RE["protein_annotations.py reactome"]
     AFDB[("AlphaFold DB API")]
     GOA[("GOA mouse file<br/>cached")]
     QGO[("QuickGO API")]

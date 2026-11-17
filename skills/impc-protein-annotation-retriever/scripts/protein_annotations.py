@@ -47,7 +47,7 @@ from urllib.parse import quote, urlencode
 from urllib.request import Request, urlopen
 
 # Reactome answers HTTP 403 to Python's default User-Agent.
-USER_AGENT = "impc-protein-resources"
+USER_AGENT = "impc-protein-annotation-retriever"
 ATTEMPTS = 3
 MAX_IDS_IN_SUMMARY = 25
 PROGRESS_EVERY = 50
@@ -87,7 +87,7 @@ ALPHAFOLD_SOURCE = [
 ALPHAFOLD_FIELDS = [column for column, _ in ALPHAFOLD_SOURCE] + ["entry_url", "downloaded_files"]
 ALPHAFOLD_DOWNLOADS = {"cif": "cif_url", "pdb": "pdb_url", "pae": "pae_doc_url", "plddt": "plddt_doc_url"}
 
-DEFAULT_CACHE = Path.home() / ".cache" / "impc-skills" / "protein-resources"
+DEFAULT_CACHE = Path.home() / ".cache" / "impc-skills" / "protein-annotations"
 METADATA_NAME = "metadata.json"
 
 GOA_URL = "https://ftp.ebi.ac.uk/pub/databases/GO/goa/MOUSE/goa_mouse.gaf.gz"

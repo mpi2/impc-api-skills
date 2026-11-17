@@ -35,7 +35,7 @@ After the five leading columns, each value is copied from the file.
   the protein takes part in them and nothing about how central it is.
 
 For pathways of the human ortholog with reaction counts and top-level
-categories, `impc-gwas-trait-mapper` has a Reactome step. This command stays
+categories, `impc-human-evidence-explorer` has a Reactome step. This command stays
 with the mouse protein.
 
 ## What `no_entry` means

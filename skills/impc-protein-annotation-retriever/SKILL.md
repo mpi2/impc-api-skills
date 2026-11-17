@@ -1,7 +1,7 @@
 ---
-name: impc-protein-resources
+name: impc-protein-annotation-retriever
 description: >-
-  Retrieve protein-level records for IMPC mouse genes from resources keyed by UniProt accession: AlphaFold DB predicted structures (confidence figures, entry links, model and PAE files), GO annotations, and Reactome pathways. Takes MGI ids, an IMPC result CSV or a gene set defined by an IMPC query, gets UniProt accessions through impc-uniprot-mapper and returns one table per resource. Use it whenever a user wants AlphaFold structures or pLDDT, GO terms or annotations, or Reactome pathways for IMPC genes, knockouts or phenotype gene lists, asks what is known about the proteins behind an IMPC gene set, or wants to refresh or inspect the local GO and Reactome files, even if they never name UniProt. Not for enrichment or over-representation tests, and not for human GWAS or ortholog evidence (use impc-gwas-trait-mapper).
+  Retrieve protein-level records for IMPC mouse genes from resources keyed by UniProt accession: AlphaFold DB predicted structures (confidence figures, entry links, model and PAE files), GO annotations, and Reactome pathways. Takes MGI ids, an IMPC result CSV or a gene set defined by an IMPC query, gets UniProt accessions through impc-uniprot-mapper and returns one table per resource. Use it whenever a user wants AlphaFold structures or pLDDT, GO terms or annotations, or Reactome pathways for IMPC genes, knockouts or phenotype gene lists, asks what is known about the proteins behind an IMPC gene set, or wants to refresh or inspect the local GO and Reactome files, even if they never name UniProt. Not for enrichment or over-representation tests, and not for human GWAS or ortholog evidence (use impc-human-evidence-explorer).
 ---
 
 # IMPC genes → AlphaFold, GO and Reactome
@@ -26,9 +26,9 @@ such file and its API is fast, so it is asked per protein.
 MGI ids, IMPC CSV, or gene set        impc-uniprot-mapper (it calls impc-data-retriever when needed)
   → local UniProt mapping             use it if built, otherwise build it through the mapper
   → UniProt accessions                uniprot_ids.csv, output contract schema 1
-    → AlphaFold DB entries            protein_resources.py alphafold    AlphaFold DB API
-    → GO annotations                  protein_resources.py go           GOA mouse file, QuickGO for accessions it lacks
-    → Reactome pathways               protein_resources.py reactome     Reactome UniProt to pathway file
+    → AlphaFold DB entries            protein_annotations.py alphafold    AlphaFold DB API
+    → GO annotations                  protein_annotations.py go           GOA mouse file, QuickGO for accessions it lacks
+    → Reactome pathways               protein_annotations.py reactome     Reactome UniProt to pathway file
 ```
 
 ## Prerequisites
@@ -87,9 +87,9 @@ If the user already has a mapper CSV, use it and skip the mapping.
 ### 3. Query
 
 ```bash
-uv run --script scripts/protein_resources.py alphafold --mapping uniprot_ids.csv --out alphafold.csv
-uv run --script scripts/protein_resources.py go        --mapping uniprot_ids.csv --out go_annotations.csv
-uv run --script scripts/protein_resources.py reactome  --mapping uniprot_ids.csv --out reactome_pathways.csv
+uv run --script scripts/protein_annotations.py alphafold --mapping uniprot_ids.csv --out alphafold.csv
+uv run --script scripts/protein_annotations.py go        --mapping uniprot_ids.csv --out go_annotations.csv
+uv run --script scripts/protein_annotations.py reactome  --mapping uniprot_ids.csv --out reactome_pathways.csv
 ```
 
 The commands are independent. Each looks up every distinct accession once.
@@ -181,7 +181,7 @@ accession are not in the file; the summary counts them.
 
 ## Managing the bulk files
 
-The GO and Reactome files live in `~/.cache/impc-skills/protein-resources/`, so
+The GO and Reactome files live in `~/.cache/impc-skills/protein-annotations/`, so
 they survive across projects. `go`, `reactome` and `status` accept `--cache-dir`
 to use another location.
 
@@ -202,7 +202,7 @@ instead, at about 1 second per protein.
 ## Adding a resource
 
 A resource belongs here when it is keyed by UniProt accession and is a lookup,
-not an analysis. Add a fetcher and a command to `scripts/protein_resources.py`,
+not an analysis. Add a fetcher and a command to `scripts/protein_annotations.py`,
 keep the five leading columns and the three statuses, and write
 `references/<resource>-guide.md`. Prefer the resource's published file when it
 has one, and register it in `DATASETS` so it is cached and described like the
