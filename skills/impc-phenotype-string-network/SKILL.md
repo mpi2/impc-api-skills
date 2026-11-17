@@ -1,5 +1,5 @@
 ---
-name: impc-string-ppi-enrichment
+name: impc-phenotype-string-network
 description: >-
   Test whether the genes behind IMPC mouse phenotypes form a connected protein network. Retrieves genes for MP ids or labels, runs STRING PPI enrichment against both the proteome and IMPC-tested genes, provides interactive network links, and compares opposite phenotype directions where applicable. Use for STRING links, PPI enrichment, interaction enrichment or network connectivity for IMPC phenotypes or knockout gene sets, including whether genes sharing a phenotype interact more than expected. Not for functional (GO/KEGG) enrichment or single-gene interaction lookups.
 ---
@@ -135,7 +135,7 @@ from the first request, as the data retriever's output report requires.
 ### 3. Run enrichment
 
 ```bash
-uv run skills/impc-string-ppi-enrichment/scripts/string_ppi.py \
+uv run skills/impc-phenotype-string-network/scripts/string_ppi.py \
   --genes 02_impc_genes.csv --out-dir .
 ```
 

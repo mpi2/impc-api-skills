@@ -19,7 +19,7 @@ class McpClient:
         self._post({
             "jsonrpc": "2.0", "id": self._next(), "method": "initialize",
             "params": {"protocolVersion": protocol, "capabilities": {},
-                       "clientInfo": {"name": "impc-string-ppi-enrichment", "version": "0.1"}},
+                       "clientInfo": {"name": "impc-phenotype-string-network", "version": "0.1"}},
         })
         try:
             self._post({"jsonrpc": "2.0", "method": "notifications/initialized"})
@@ -33,7 +33,7 @@ class McpClient:
     def _post(self, body: dict) -> list[dict]:
         headers = {"Content-Type": "application/json",
                    "Accept": "application/json, text/event-stream",
-                   "User-Agent": "impc-string-ppi-enrichment/0.1"}  # default urllib agent gets 403
+                   "User-Agent": "impc-phenotype-string-network/0.1"}  # default urllib agent gets 403
         if self.session_id:
             headers["Mcp-Session-Id"] = self.session_id
         req = urllib.request.Request(self.url, json.dumps(body).encode(), headers)

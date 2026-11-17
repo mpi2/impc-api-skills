@@ -60,7 +60,7 @@ flowchart LR
 ```
 
 
-# impc-string-ppi-enrichment workflow (experimental)
+# impc-phenotype-string-network workflow (experimental)
 
 ```mermaid
 flowchart LR
