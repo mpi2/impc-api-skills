@@ -2,7 +2,7 @@
 name: get-impress-data
 metadata:
   version: "1.0.0"
-description: Generate IMPReSS links and downloadable triplet tables from natural-language requests by resolving pipeline, procedure, and parameter identifiers in the IMPC Solr pipeline core. Use for requests to find, list, or generate applicable IMPReSS parameter pages, including ambiguous or centre-specific variants.
+description: Use when the user invokes $get-impress-data or asks to get, find, look up, or list IMPReSS procedures, parameters, or protocols; resolve pipeline, procedure, and parameter identifiers from the IMPC Solr pipeline core and return IMPReSS links or downloadable triplet tables, including ambiguous or centre-specific variants.
 ---
 
 # IMPReSS Procedure and Parameter Links
@@ -41,13 +41,11 @@ exposes the tool.
    `core: "pipeline"`. Search the relevant `parameter_name`,
    `procedure_name`, and pipeline fields with the request's meaningful terms.
    Build a wildcard clause for each meaningful token and combine token clauses
-   with `AND`; do not rely on an exact quoted phrase. Include an `OR` variant
-   for joined spellings when relevant (for example, `body weight` should
-   search both `(parameter_name:*body* AND parameter_name:*weight*)` and
-   `parameter_name:*bodyweight*`). Run supplementary single-token and exact /
-   case-preserving searches, plus stable-ID searches when the request contains
-   an ID, and union their results before filtering. A zero or incomplete result
-   from one query is not proof that no record exists. Query enough rows to
+   with `AND`; do not rely on an exact quoted phrase. Run supplementary
+   single-token and exact / case-preserving searches, plus stable-ID searches
+   when the request contains an ID, and union their results before filtering.
+   A zero or incomplete result from one query is not proof that no record
+   exists. Query enough rows to
    include every match—prefer `rows: 10000`—and request at least:
 
    `pipeline_id,pipeline_name,pipeline_stable_id,procedure_name,procedure_stable_id,procedure_stable_key,parameter_name,parameter_stable_id,parameter_stable_key`
@@ -85,10 +83,11 @@ exposes the tool.
    fragment after `#` only from `parameter_stable_key`. URL-encode values if
    required, and do not emit a URL when either required identifier is missing.
    The pipeline ID is represented in the table and CSV; it is not substituted
-   into `procID` or the fragment. If a procedure-level link is also useful,
-   construct it separately as:
+   into `procID` or the fragment. A procedure-level link does not need the
+   pipeline ID because `procedure_stable_key` uniquely identifies the
+   procedure in IMPReSS. Construct it as:
 
-   `https://www.mousephenotype.org/impress/ProcedureInfo?action=list&procID=<procedure_stable_key>&pipeID=<pipeline_id>`
+   `https://www.mousephenotype.org/impress/ProcedureInfo?action=list&procID=<procedure_stable_key>`
 
 7. Return a table with at least these columns:
    `pipeline_name`, `pipeline_stable_id`, `procedure_name`,
