@@ -1,5 +1,7 @@
 ---
 name: impc-uniprot-mapper
+metadata:
+  version: "1.0.0"
 description: >-
   Convert IMPC mouse gene MGI ids to UniProt accessions using a local mapping built from UniProt's mouse idmapping file, with no calls to the UniProt REST API. Takes MGI ids, an IMPC result CSV, or a gene set defined by an IMPC query, and returns reviewed (Swiss-Prot) accessions by default. Use it whenever a user wants UniProt ids, accessions or protein identifiers for IMPC genes, knockouts or phenotype gene lists, asks to map or translate MGI ids to UniProt, or wants to build, refresh, rebuild or inspect the local MGI to UniProt mapping, even if they never say "mapping".
 ---
@@ -107,8 +109,9 @@ Create a result directory named after the request. Save the CSV there and write
 a `README.md` following
 [the retrieval report guide](../impc-data-retriever/references/output-report.md),
 with one entry for the `map` command, its status counts, and any IMPC queries.
-Under Provenance, record the `source` block from the summary (UniProt release,
-last-modified date, retrieval date, checksums). That block is what ties a result
+Under Provenance, record the skill as `impc-uniprot-mapper <metadata.version>`
+and the `source` block from the summary (UniProt release, last-modified date,
+retrieval date, checksums). That block is what ties a result
 to a specific download. Leave local cache paths out of the report.
 
 Show the user the status counts, the policy used and the UniProt release.

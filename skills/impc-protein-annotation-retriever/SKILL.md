@@ -1,5 +1,7 @@
 ---
 name: impc-protein-annotation-retriever
+metadata:
+  version: "1.0.0"
 description: >-
   Retrieve protein-level records for IMPC mouse genes from resources keyed by UniProt accession: AlphaFold DB predicted structures (confidence figures, entry links, model and PAE files), GO annotations, and Reactome pathways. Takes MGI ids, an IMPC result CSV or a gene set defined by an IMPC query, gets UniProt accessions through impc-uniprot-mapper and returns one table per resource. Use it whenever a user wants AlphaFold structures or pLDDT, GO terms or annotations, or Reactome pathways for IMPC genes, knockouts or phenotype gene lists, asks what is known about the proteins behind an IMPC gene set, or wants to refresh or inspect the local GO and Reactome files, even if they never name UniProt. Not for enrichment or over-representation tests, and not for human GWAS or ortholog evidence (use impc-human-evidence-explorer).
 ---
@@ -137,7 +139,7 @@ its summary:
 | Result summary | `genes_in_mapping`, `accessions_queried`, `status_counts`, `rows_written` |
 | Queries, the command's entry | The command as run and `options`: filters, what happened to each bulk file, and the resource's own counts |
 | Limitations and follow-up | `genes_without_accession` with its `by_mapping_status` counts and ids, the `no_entry` ids, and the `failed` ids with their errors |
-| Provenance | The `source` block (file dates, releases and checksums, or the API endpoint, with the retrieval time) and the mapper's `source` block |
+| Provenance | This skill and the mapper as `<name> <metadata.version>`, the `source` block (file dates, releases and checksums, or the API endpoint, with the retrieval time) and the mapper's `source` block |
 
 Copy the figures as printed; do not recount them from the CSV. A summary lists
 at most 25 ids and sets `truncated` when there are more: give the count and say
