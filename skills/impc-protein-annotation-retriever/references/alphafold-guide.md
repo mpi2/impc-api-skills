@@ -23,7 +23,7 @@ response. The source field is given where the name differs.
 | `cif_url`, `pdb_url` | Model coordinates in mmCIF and PDB format |
 | `pae_doc_url`, `pae_image_url` | Predicted aligned error as JSON and as an image |
 | `plddt_doc_url` | Per-residue pLDDT as JSON |
-| `entry_url` | The protein's page on the AlphaFold DB website |
+| `entry_url` | The entry's page on the AlphaFold DB website |
 | `downloaded_files` | File names saved by `--download`, `;`-separated |
 
 ## Options
@@ -35,7 +35,7 @@ response. The source field is given where the name differs.
 | `--files-dir DIR` | Where `--download` saves; default `alphafold_files` next to `--out` |
 
 **Isoforms.** AlphaFold DB can hold one entry per isoform as well as the entry
-for the accession itself; Kit (`P05532`) has two isoform entries. By default
+for the accession itself; Kit (`P05532`) has two isoform entries, `P05532-2` and `P05532-3`. By default
 only the accession's own entry is written, so that one protein gives one row,
 and the summary's `isoform_entries_left_out` counts the rest. If an accession
 has isoform entries but none of its own, those are written. Use `--isoforms`

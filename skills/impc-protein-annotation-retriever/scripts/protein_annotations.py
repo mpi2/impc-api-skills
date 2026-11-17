@@ -460,7 +460,8 @@ def fetch_alphafold(accessions: list[str], args: argparse.Namespace) -> tuple[Re
         records = []
         for entry in entries:
             record = {column: cell(entry.get(source)) for column, source in ALPHAFOLD_SOURCE}
-            record["entry_url"] = f"{ALPHAFOLD_ENTRY}/{quote(accession, safe='')}"
+            # Link the entry itself, so an isoform row does not point at the canonical model.
+            record["entry_url"] = f"{ALPHAFOLD_ENTRY}/{quote(record['entry_id'] or accession, safe='')}"
             saved = []
             for kind in downloads:
                 url = record[ALPHAFOLD_DOWNLOADS[kind]]
