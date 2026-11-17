@@ -84,17 +84,20 @@ uv run --script scripts/uniprot_idmap.py map --input impc.csv --column marker_ac
 ```
 
 The CSV goes to `--out` and a JSON summary goes to stderr. Each distinct input
-id appears in the output at least once. Input file columns are not carried over,
-so join back on `mgi_id` if needed.
+id appears in the output at least once. Blank values, such as rows of an IMPC
+file with no gene id, are skipped and counted in `blank_ids`; report the count
+if it is above zero. Input file columns are not carried over, so join back on
+`mgi_id` if needed.
 
 ### 4. Read the summary and act on it
 
 - **`no_reviewed_hit` is above zero and the user has not already decided:** stop
   and ask. Give the count and the gene names, then ask whether to use unreviewed
   accessions for those genes. The summary lists at most 25 ids, so read the full
-  set from the CSV where `mapping_status` is `no_reviewed_hit`. If yes, rerun with `--unreviewed fallback`. If no,
-  keep the rows as they are, with blank accessions. Do not continue to any
-  downstream step on these genes before the user answers.
+  set from the CSV where `mapping_status` is `no_reviewed_hit`. If yes, rerun
+  with `--unreviewed fallback`. If no, keep the rows as they are, with blank
+  accessions. Do not continue to any downstream step on these genes before the
+  user answers.
 - **`not_found`:** report the ids. Most are genes with no protein product in
   UniProt, such as miRNAs, lncRNAs and pseudogenes, or transgenes and other
   non-gene markers.
@@ -172,6 +175,7 @@ distinct input id has at least one row.
 | `output_schema` | Contract number |
 | `unreviewed_policy` | `exclude`, `fallback` or `include` |
 | `input_ids`, `unique_ids`, `rows_written` | Counts for the run |
+| `blank_ids` | Blank input values skipped; not in `input_ids` |
 | `output` | The `--out` path, or `stdout` |
 | `status_counts` | Genes per `mapping_status`; all six are listed, zeros included |
 | `no_reviewed_hit`, `not_found`, `invalid_id` | `count`, up to 25 `ids`, and `truncated` |

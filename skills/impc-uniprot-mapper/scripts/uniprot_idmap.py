@@ -223,14 +223,27 @@ def read_metadata(cache: Path) -> dict | None:
     metadata_path = cache / METADATA_NAME
     if not metadata_path.exists() or not (cache / MAPPING_NAME).exists():
         return None
-    return json.loads(metadata_path.read_text(encoding="utf-8"))
+    try:
+        return json.loads(metadata_path.read_text(encoding="utf-8"))
+    except ValueError:
+        # Without readable metadata the mapping cannot be traced to a release, so it counts as absent.
+        print(f"warning: {metadata_path} is unreadable; treating the mapping as absent", file=sys.stderr)
+        return None
 
 
 def read_history(cache: Path) -> list[dict]:
     path = cache / HISTORY_NAME
     if not path.exists():
         return []
-    return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line]
+    records = []
+    for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+        if not line:
+            continue
+        try:
+            records.append(json.loads(line))
+        except ValueError:
+            print(f"warning: skipping unreadable line {number} of {path}", file=sys.stderr)
+    return records
 
 
 def describe(metadata: dict) -> str:
@@ -278,10 +291,14 @@ def update_cache(cache: Path, action: str) -> int:
             (cache / METADATA_NAME).unlink(missing_ok=True)
             os.replace(mapping_path, cache / MAPPING_NAME)
             (cache / METADATA_NAME).write_text(json.dumps(metadata, indent=2) + "\n", encoding="utf-8")
-    except ToolError as error:
-        if current:
-            raise ToolError(f"{error}. Existing mapping kept: {describe(current)}") from error
-        raise ToolError(f"{error}. No mapping is available.") from error
+    except (ToolError, OSError) as error:
+        # Network errors are handled in download(); an OSError here is a local disk or permission error.
+        detail = error if isinstance(error, ToolError) else f"{type(error).__name__}: {error}"
+        # Read the cache again: a failure while swapping files can leave no usable mapping.
+        kept = read_metadata(cache)
+        if kept:
+            raise ToolError(f"{detail}. Existing mapping kept: {describe(kept)}") from error
+        raise ToolError(f"{detail}. No mapping is available.") from error
 
     with (cache / HISTORY_NAME).open("a", encoding="utf-8") as history:
         history.write(json.dumps({"action": action, **metadata}) + "\n")
@@ -307,7 +324,8 @@ def show_status(cache: Path) -> int:
     return 0
 
 
-def read_ids(args: argparse.Namespace) -> list[str]:
+def read_ids(args: argparse.Namespace) -> tuple[list[str], int]:
+    """Return the ids to look up and the number of blank values skipped."""
     ids = list(args.ids)
     if args.input:
         path = Path(args.input)
@@ -322,10 +340,11 @@ def read_ids(args: argparse.Namespace) -> list[str]:
                 ids += [row[args.column] for row in reader]
             else:
                 ids += handle.read().splitlines()
-    ids = [value.strip() for value in ids if value and value.strip()]
+    stripped = [(value or "").strip() for value in ids]
+    ids = [value for value in stripped if value]
     if not ids:
         raise ToolError("no ids given; pass MGI ids or --input")
-    return ids
+    return ids, len(stripped) - len(ids)
 
 
 def load_hits(cache: Path, wanted: set[str]) -> dict[str, list[dict[str, str]]]:
@@ -377,7 +396,7 @@ def map_ids(args: argparse.Namespace) -> int:
     if not metadata:
         raise ToolError(f"no mapping in {cache}; run build first")
 
-    inputs = read_ids(args)
+    inputs, blank_ids = read_ids(args)
     unique = list(dict.fromkeys(inputs))
     valid = {value for value in unique if MGI_ID.match(value)}
     hits = load_hits(cache, valid)
@@ -409,6 +428,7 @@ def map_ids(args: argparse.Namespace) -> int:
         "output_schema": OUTPUT_SCHEMA,
         "unreviewed_policy": args.unreviewed,
         "input_ids": len(inputs),
+        "blank_ids": blank_ids,
         "unique_ids": len(unique),
         "rows_written": len(rows),
         "output": args.out or "stdout",
