@@ -8,7 +8,7 @@ description: >-
 
 # IMPC genes → AlphaFold, GO and Reactome
 
-**Experimental:** the output format may change and there are no evals yet.
+**Experimental.**
 
 ## Why this skill exists
 

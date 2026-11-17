@@ -8,8 +8,7 @@ description: >-
 
 # IMPC genes → UniProt accessions
 
-**Experimental:** there are no evals yet. The output of `map` is frozen, see
-[Output contract](#output-contract-schema-1), so other skills can build on it.
+**Experimental.**
 
 ## Why this skill exists
 
