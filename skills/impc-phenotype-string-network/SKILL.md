@@ -1,5 +1,7 @@
 ---
 name: impc-phenotype-string-network
+metadata:
+  version: "1.0.0"
 description: >-
   Test whether the genes behind IMPC mouse phenotypes form a connected protein network. Retrieves genes for MP ids or labels, runs STRING PPI enrichment against both the proteome and IMPC-tested genes, provides interactive network links, and compares opposite phenotype directions where applicable. Use for STRING links, PPI enrichment, interaction enrichment or network connectivity for IMPC phenotypes or knockout gene sets, including whether genes sharing a phenotype interact more than expected. Not for functional (GO/KEGG) enrichment or single-gene interaction lookups.
 ---
