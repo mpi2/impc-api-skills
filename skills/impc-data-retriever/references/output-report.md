@@ -120,6 +120,7 @@ num_found, dataframe = solr_request(
 
 ## Provenance
 
+- Skill: `impc-data-retriever <metadata.version from the installed SKILL.md used for this run>`
 - Generated: `<UTC ISO-8601 timestamp>`
 - uv: `<version>` using the local uv project
 - Package: `impc-api <version>`

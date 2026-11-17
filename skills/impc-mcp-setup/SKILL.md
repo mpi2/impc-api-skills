@@ -1,5 +1,7 @@
 ---
 name: impc-mcp-setup
+metadata:
+  version: "1.0.0"
 description: Configure and verify one or more hosted IMPC MCP servers in the current or user-specified MCP-capable AI client. This is primarily a prerequisite invoked by another IMPC skill to install the specific Solr, Publications, Orthology or Allele server it needs; it can also be run directly when a user asks to set up, enable, repair or check an IMPC MCP server or "IMPC tools."
 ---
 
