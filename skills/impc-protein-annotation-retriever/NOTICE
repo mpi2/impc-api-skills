@@ -1,0 +1,13 @@
+The choice of resources and endpoints, the per-resource reference guides and
+the attribution step were informed by ideas in these skills of
+https://github.com/google-deepmind/science-skills (Copyright 2026 Google LLC):
+alphafold_database_fetch_and_analyze, quickgo_database, reactome_database and
+alphagenome_atlas_website_links. No text or code was copied from them; this
+skill is written independently.
+
+The data come from:
+- AlphaFold Protein Structure Database, CC BY 4.0: https://alphafold.ebi.ac.uk/
+- Gene Ontology annotations (EMBL-EBI GOA mouse file, and QuickGO for
+  accessions the file lacks) and the GO ontology, CC BY 4.0:
+  https://geneontology.org/docs/go-citation-policy/ and https://www.ebi.ac.uk/QuickGO/
+- Reactome (UniProt2Reactome.txt), CC0: https://reactome.org/license
